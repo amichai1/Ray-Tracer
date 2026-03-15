@@ -6,7 +6,7 @@ import primitives.Point;
  * Represents a triangle in 3D space.
  * <p>
  * A triangle is a special case of a convex {@link Polygon} with exactly three
- * vertices. It inherits all polygon behaviour including normal computation.
+ * vertices. It inherits all polygon behavior including normal computation.
  * </p>
  * <p>
  * This class is immutable.
