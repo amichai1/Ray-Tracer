@@ -17,7 +17,7 @@ public class Point {
     /**
      * Coordinates of this point stored as a {@link Double3} triple.
      */
-    final Double3 _xyz;
+    protected Double3 _xyz;
 
     /**
      * The origin point (0, 0, 0).
