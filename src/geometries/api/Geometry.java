@@ -15,6 +15,12 @@ import primitives.Vector;
 public abstract class Geometry {
 
     /**
+     * Default constructor for Geometry.
+     */
+    public Geometry() {
+    }
+
+    /**
      * Returns the outward unit normal to this geometry at the given surface point.
      *
      * @param point a point on the surface of this geometry
