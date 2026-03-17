@@ -19,6 +19,7 @@ public class Tube extends RadialGeometry {
 
     /**
      * The central axis of the tube.
+     *according to the logic of the updated instructions "axis" should have a ' _ '
      */
     protected final Ray _axis;
 
