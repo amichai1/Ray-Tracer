@@ -17,7 +17,7 @@ public class Point {
     /**
      * Coordinates of this point stored as a {@link Double3} triple.
      */
-    protected Double3 _xyz;
+    protected final Double3 _xyz;
 
     /**
      * The origin point (0, 0, 0).
@@ -52,7 +52,7 @@ public class Point {
      * @throws IllegalArgumentException if the two points are identical (result
      *                                  would be a zero vector)
      */
-    public Vector subtract(Point other) {
+    public final Vector subtract(Point other) {
         return new Vector(_xyz.subtract(other._xyz));
     }
 
@@ -76,7 +76,7 @@ public class Point {
      * @param other the other point
      * @return the squared distance
      */
-    public double distanceSquared(Point other) {
+    public final double distanceSquared(Point other) {
         Double3 d = _xyz.subtract(other._xyz);
         return d._d1() * d._d1() + d._d2() * d._d2() + d._d3() * d._d3();
     }
@@ -87,7 +87,7 @@ public class Point {
      * @param other the other point
      * @return the distance
      */
-    public double distance(Point other) {
+    public final double distance(Point other) {
         return Math.sqrt(distanceSquared(other));
     }
 
