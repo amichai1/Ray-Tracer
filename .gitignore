@@ -34,6 +34,7 @@ bin/
 ### Claude ###
 instructions/claude.md
 .claude*
+*claude*
 
 ### Project instructions ###
 instructions/
