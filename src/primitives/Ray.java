@@ -1,5 +1,7 @@
 package primitives;
 
+import java.util.Objects;
+
 /**
  * Represents a ray (half-line) in a 3D Cartesian coordinate system.
  * <p>
@@ -57,6 +59,11 @@ public final class Ray {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(_origin, _direction);
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
         return obj instanceof Ray other
@@ -66,6 +73,6 @@ public final class Ray {
 
     @Override
     public String toString() {
-        return "Ray{origin=" + _origin + ", direction=" + _direction + "}";
+        return "Ray=" + _origin + ", direction=" + _direction;
     }
 }
