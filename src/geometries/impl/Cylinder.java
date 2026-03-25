@@ -1,6 +1,9 @@
 package geometries.impl;
 
+import primitives.Point;
 import primitives.Ray;
+import primitives.Util;
+import primitives.Vector;
 
 /**
  * Represents a finite cylinder (tube with two flat caps) in 3D space.
@@ -30,5 +33,14 @@ public final class Cylinder extends Tube {
     public Cylinder(double radius, Ray axis, double height) {
         super(radius, axis);
         _height = height;
+    }
+
+    @Override
+    public Vector getNormal(Point point) {
+        Vector axis = _axis.direction();
+        double t    = axis.dotProduct(point.subtract(_axis.origin()));
+        if (Util.isZero(t))          return axis.scale(-1);
+        if (Util.isZero(t - _height)) return axis;
+        return super.getNormal(point);
     }
 }

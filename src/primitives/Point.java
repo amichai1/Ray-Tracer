@@ -92,18 +92,18 @@ public class Point {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (this == obj) return true;
         return obj instanceof Point other && _xyz.equals(other._xyz);
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return Objects.hash(_xyz);
     }
 
     @Override
     public String toString() {
-        return _xyz.toString();
+        return "" + _xyz;
     }
 }

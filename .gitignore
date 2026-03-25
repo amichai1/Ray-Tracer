@@ -4,6 +4,7 @@ out/
 !**/src/test/**/out/
 .kotlin
 .idea/
+*.iml
 
 ### Eclipse ###
 .apt_generated
@@ -31,8 +32,9 @@ bin/
 .DS_Store
 
 ### Claude ###
-claude*
+instructions/claude.md
 .claude*
 
 ### Project instructions ###
 instructions/
+/doc/
