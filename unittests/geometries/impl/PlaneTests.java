@@ -114,10 +114,4 @@ class PlaneTests {
         assertEquals(1.0, normalAtRef.length(), DELTA,
                 "getNormal() at reference point must return a unit vector");
     }
-
-    @test
-    void testGetNormal2() {
-
-    }
-
 }
