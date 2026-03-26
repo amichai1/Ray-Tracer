@@ -1,6 +1,11 @@
 package geometries.impl;
 
+import static primitives.Util.alignZero;
+
+import java.util.List;
+
 import primitives.Point;
+import primitives.Ray;
 import primitives.Vector;
 
 /**
@@ -35,5 +40,30 @@ public final class Sphere extends RadialGeometry {
     @Override
     public Vector getNormal(Point point) {
         return point.subtract(_center).normalize();
+    }
+
+    @Override
+    public List<Point> findIntersections(Ray ray) {
+        double tm;
+        double uLenSq;
+        try {
+            Vector u = _center.subtract(ray.origin());
+            tm    = ray.direction().dotProduct(u);
+            uLenSq = u.lengthSquared();
+        } catch (IllegalArgumentException e) {
+            // ray origin is at the sphere center: t1 = -r (excluded), t2 = r
+            return List.of(ray.getPoint(_radius));
+        }
+
+        double d2 = uLenSq - tm * tm;
+        if (alignZero(d2 - _radiusSquared) >= 0) return null; // miss or tangent
+
+        double th = Math.sqrt(_radiusSquared - d2);
+        double t1 = alignZero(tm - th);
+        double t2 = alignZero(tm + th);
+
+        if (t2 <= 0) return null;
+        return t1 <= 0 ? List.of(ray.getPoint(t2))
+                       : List.of(ray.getPoint(t1), ray.getPoint(t2));
     }
 }

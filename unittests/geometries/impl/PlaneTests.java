@@ -1,10 +1,15 @@
 package geometries.impl;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
 import primitives.Point;
+import primitives.Ray;
 import primitives.Vector;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -17,6 +22,16 @@ class PlaneTests {
      * Default constructor to satisfy JavaDoc generator
      */
     PlaneTests() { /* to satisfy JavaDoc generator */ }
+
+    /**
+     * Plane used in findIntersections tests: the XZ-plane (y = 0),
+     * with reference point (1,0,0) and unit normal (0,1,0).
+     */
+    private static final Plane  PLANE = new Plane(new Point(1, 0, 0), new Vector(0, 1, 0));
+    /**
+     * Error message for plane intersection failures
+     */
+    private static final String ERR   = "Wrong result for Plane.findIntersections";
 
     /**
      * First point on the plane
@@ -87,6 +102,45 @@ class PlaneTests {
         assertThrows(IllegalArgumentException.class,
                 () -> new Plane(new Point(0, 0, 0), new Point(1, 0, 0), new Point(2, 0, 0)),
                 "Constructor must throw for collinear points");
+    }
+
+    /**
+     * Test method for {@link Plane#findIntersections(Ray)}.
+     */
+    @Test
+    void testFindIntersections() {
+        // ============ Equivalence Partitions Tests ==============
+
+        // EP01: Ray intersects the plane – one intersection point
+        List<Point> result = PLANE.findIntersections(new Ray(new Point(1, 1, 0), new Vector(0, -1, 0)));
+        assertEquals(List.of(new Point(1, 0, 0)), result, ERR);
+
+        // EP02: Ray points away from the plane (t < 0) – no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(1, 1, 0), new Vector(0, 1, 0))), ERR);
+
+        // =============== Boundary Values Tests ==================
+
+        // BV01: Ray is parallel to the plane and not on it – no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(1, 1, 0), new Vector(1, 0, 0))), ERR);
+
+        // BV02: Ray is parallel to the plane and lies on it – no intersection (or infinite)
+        assertNull(PLANE.findIntersections(new Ray(new Point(3, 0, 4), new Vector(1, 0, 0))), ERR);
+
+        // BV03: Ray is orthogonal to the plane, origin before the plane – one intersection
+        List<Point> resultBV03 = PLANE.findIntersections(new Ray(new Point(1, -1, 0), new Vector(0, 1, 0)));
+        assertEquals(List.of(new Point(1, 0, 0)), resultBV03, ERR);
+
+        // BV04: Ray is orthogonal to the plane, origin on the plane (t = 0) – no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(3, 0, 4), new Vector(0, 1, 0))), ERR);
+
+        // BV05: Ray is orthogonal to the plane, origin after the plane – no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(1, 1, 0), new Vector(0, 1, 0))), ERR);
+
+        // BV06: Ray starts on the plane (not orthogonal, not parallel) – t = 0, no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(3, 0, 4), new Vector(1, 1, 0))), ERR);
+
+        // BV07: Ray starts at the plane's reference point Q – t = 0, no intersection
+        assertNull(PLANE.findIntersections(new Ray(new Point(1, 0, 0), new Vector(1, 1, 0))), ERR);
     }
 
     /**
