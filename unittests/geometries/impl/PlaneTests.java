@@ -101,9 +101,15 @@ class PlaneTests {
 
       // =============== Boundary Values Tests ==================
 
-      // BV01: Normal at the reference point P1 itself is still unit length
-      Vector normalAtRef = plane.getNormal(P1);
-      assertEquals(1.0, normalAtRef.length(), DELTA,
-                   "getNormal() at reference point must return a unit vector");
-   }
+        // BV01: Normal at the reference point P1 itself is still unit length
+        Vector normalAtRef = plane.getNormal(P1);
+        assertEquals(1.0, normalAtRef.length(), DELTA,
+                "getNormal() at reference point must return a unit vector");
+    }
+
+    @test
+    void testGetNormal2() {
+
+    }
+
 }
