@@ -41,6 +41,25 @@ public final class Ray {
     }
 
     /**
+     * Computes the point on this ray's line at parameter {@code t} from the origin.
+     * <p>
+     * The formula is: {@code P = origin + t * direction}.
+     * {@code t} may be any real number (positive, negative, or zero).
+     * When {@code t} is zero (or effectively zero), the origin is returned.
+     * </p>
+     *
+     * @param  t the signed distance along the direction vector
+     * @return   the point {@code origin + t * direction}
+     */
+    public Point getPoint(double t) {
+        try {
+            return _origin.add(_direction.scale(t));
+        } catch (IllegalArgumentException e) {
+            return _origin;
+        }
+    }
+
+    /**
      * Returns the unit direction vector of this ray.
      *
      * @return the direction vector
