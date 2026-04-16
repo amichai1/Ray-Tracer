@@ -41,23 +41,6 @@ class GeometriesTests {
         // ============ Equivalence Partitions Tests ==============
 
         // EP01: Ray intersects some (but not all) of the geometries – finite result
-        // Ray from (1,−3,0) dir (0,1,0): crosses the plane at y=0 and the sphere at y=0
-        // but misses the triangle (ray stays in y-axis direction, triangle is at y=3;
-        // actually let's choose a ray that hits sphere+plane but not triangle).
-        // Ray from (1,−2,0) dir (0,1,0):
-        //   plane y=0: t=2 → (1,0,0). Sphere: center (1,0,0); ray origin inside sphere? No,
-        //   at y=-2, |P0-C|=2>1 so outside.
-        //   Sphere intersections: u=(0,2,0), tm=2, d²=4-4=0, th=1, t1=1,t2=3 → (1,-1,0),(1,1,0)
-        //   but t1=1 gives (1,-2+1,0)=(1,-1,0) and t2=3 gives (1,1,0).
-        //   Wait: |P0-C| = |(1,-2,0)-(1,0,0)| = |(0,-2,0)| = 2 → outside sphere ✓
-        //   sphere hits: 2 points. plane hits at y=0: t=2, (1,0,0). But (1,0,0) is also
-        //   a sphere point (t=1+1=... let me recalculate).
-        // Simpler: Ray from (1,-4,0) dir (0,1,0), misses triangle (at y=3 but x=1, z=0 – inside!).
-        // Actually triangle is at y=3; ray hits y=3 at t=7 → (1,3,0). Is (1,3,0) inside triangle?
-        // Triangle vertices (-1,3,-1),(3,3,-1),(1,3,3): centroid=(1,3,1/3). (1,3,0): z=0<-1? No, z=0>-1.
-        // Plane of triangle is y=3. (1,3,0): is it inside? Need z in [-1,3] roughly and inside edges.
-        // This gets complex. Let me use a simpler ray that clearly misses the triangle.
-
         // Use Ray from (5,−2,0) dir (0,1,0):
         //   plane y=0: t=2 → (5,0,0). 1 point.
         //   sphere: |P0-C|=|(5-1,-2,0)|=sqrt(16+4)≈4.5>1 → miss.
