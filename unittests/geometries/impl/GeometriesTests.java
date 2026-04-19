@@ -1,13 +1,11 @@
 package geometries.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import org.junit.jupiter.api.Test;
-
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Unit tests for class {@link Geometries}.
@@ -31,12 +29,12 @@ class GeometriesTests {
     @Test
     void testFindIntersections() {
         // Scene: sphere, plane, triangle
-        Sphere   sphere   = new Sphere(new Point(1, 0, 0), 1d);
-        Plane    plane    = new Plane(new Point(2, 0, 0), new Vector(0, 1, 0));
+        Sphere sphere = new Sphere(new Point(1, 0, 0), 1d);
+        Plane plane = new Plane(new Point(2, 0, 0), new Vector(0, 1, 0));
         Triangle triangle = new Triangle(
-              new Point(-1, 3, -1),
-              new Point(3, 3, -1),
-              new Point(1, 3, 3));
+                new Point(-1, 3, -1),
+                new Point(3, 3, -1),
+                new Point(1, 3, 3));
 
         // ============ Equivalence Partitions Tests ==============
 
@@ -58,9 +56,9 @@ class GeometriesTests {
         //   plane y=0: ray direction (1,0,0) is parallel to plane (n=(0,1,0)·(1,0,0)=0) → miss.
         //   triangle at y=3: ray stays at y=5 ≠ 3 → miss.
         assertNull(
-              new Geometries(sphere, plane, triangle)
-                    .findIntersections(new Ray(new Point(5, 5, 5), new Vector(1, 0, 0))),
-              "BV01: expected null (no intersections)");
+                new Geometries(sphere, plane, triangle)
+                        .findIntersections(new Ray(new Point(5, 5, 5), new Vector(1, 0, 0))),
+                "BV01: expected null (no intersections)");
 
         // BV02: Only one geometry is intersected – exactly those points
         // Ray from (1,−2,5) dir (0,1,0):
@@ -70,7 +68,7 @@ class GeometriesTests {
         //   z=5 > 3 (highest z vertex is 3) → outside → miss.
         //   Total: 1 intersection (plane only).
         var resultBV02 = new Geometries(sphere, plane, triangle)
-              .findIntersections(new Ray(new Point(1, -2, 5), new Vector(0, 1, 0)));
+                .findIntersections(new Ray(new Point(1, -2, 5), new Vector(0, 1, 0)));
         assertEquals(1, resultBV02.size(), "BV02: expected 1 intersection (one body only)");
 
         // BV03: All geometries are intersected
@@ -90,7 +88,12 @@ class GeometriesTests {
         //     All same sign → inside ✓ → 1 point.
         //   Total: 1 + 2 + 1 = 4 intersections.
         var resultBV03 = new Geometries(sphere, plane, triangle)
-              .findIntersections(new Ray(new Point(1, -3, 0), new Vector(0, 1, 0)));
+                .findIntersections(new Ray(new Point(1, -3, 0), new Vector(0, 1, 0)));
         assertEquals(4, resultBV03.size(), "BV03: expected 4 intersections (all bodies)");
+
+
+        // BV04: Empty collection of geometries – null
+        assertNull(new Geometries().findIntersections(new Ray(new Point(1, 2, 3), new Vector(1, 1, 1))),
+                "BV00: Empty collection should return null");
     }
 }
