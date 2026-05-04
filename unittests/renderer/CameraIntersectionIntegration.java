@@ -112,9 +112,9 @@ class CameraIntersectionIntegration {
     /**
      * Integration tests for camera rays intersecting with planes.
      * <p>
-     * Three scenarios: perpendicular plane (all 9 rays), slightly tilted plane
-     * (all 9 rays), and a steeply tilted plane where the top row of rays is
-     * parallel to the plane (6 intersections).
+     * Four scenarios: perpendicular plane (all 9 rays), slightly tilted plane
+     * (all 9 rays), steeply tilted plane where the top row is parallel to the
+     * plane (6 intersections), and a plane located behind the camera (0 intersections).
      * </p>
      */
     @Test
@@ -134,13 +134,20 @@ class CameraIntersectionIntegration {
         assertIntersectionsCount(CAMERA,
                 new Plane(new Point(0, 0, -5), new Vector(0, 1, 1)),
                 6, "TC03: Steeply tilted plane – 6 intersections");
+
+        // BV01: Plane behind the camera – all rays travel in the −Z direction and
+        //       can never reach z=1, so no intersections occur
+        assertIntersectionsCount(CAMERA,
+                new Plane(new Point(0, 0, 1), new Vector(0, 0, 1)),
+                0, "BV01: Plane behind camera – 0 intersections");
     }
 
     /**
      * Integration tests for camera rays intersecting with triangles.
      * <p>
-     * Two scenarios: a small triangle hit only by the center ray, and a taller
-     * triangle also hit by the top-middle ray.
+     * Three scenarios: a small triangle hit only by the center ray, a taller
+     * triangle also hit by the top-middle ray, and a triangle placed entirely
+     * outside the field of view (0 intersections).
      * </p>
      */
     @Test
@@ -158,5 +165,12 @@ class CameraIntersectionIntegration {
                              new Point(-1, -0.5, -2),
                              new Point(1, -0.5, -2)),
                 2, "TC02: Tall triangle – center + top-middle rays");
+
+        // BV01: Triangle completely outside the field of view – no ray reaches it
+        assertIntersectionsCount(CAMERA,
+                new Triangle(new Point(10, 10, -2),
+                             new Point(11, 10, -2),
+                             new Point(10, 11, -2)),
+                0, "BV01: Triangle outside field of view – 0 intersections");
     }
 }

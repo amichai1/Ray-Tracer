@@ -2,9 +2,11 @@ package renderer;
 
 import java.util.MissingResourceException;
 
+import primitives.Color;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import scene.Scene;
 
 import static primitives.Util.isZero;
 
@@ -60,6 +62,12 @@ public class Camera implements Cloneable {
     /** Height of a single pixel (pre-computed in {@link Builder#build()}). */
     double _pixelHeight;
 
+    /** Ray tracer used to compute pixel colors during rendering. */
+    RayTracerBase _rayTracer;
+
+    /** Image buffer used to accumulate and export pixel colors. */
+    ImageWriter _imageWriter;
+
     /**
      * Private default constructor.
      * <p>
@@ -98,6 +106,57 @@ public class Camera implements Cloneable {
         if (!isZero(yI)) pIJ = pIJ.add(_vUp.scale(yI));
 
         return new Ray(_p0, pIJ.subtract(_p0));
+    }
+
+    /**
+     * Casts a ray through pixel {@code (xIndex, yIndex)}, traces it, and writes
+     * the resulting color to the image buffer.
+     *
+     * @param  xIndex the pixel column index (0-based)
+     * @param  yIndex the pixel row index (0-based)
+     */
+    private void castRay(int xIndex, int yIndex) {
+        _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(constructRay(xIndex, yIndex)));
+    }
+
+    /**
+     * Renders the scene by casting a ray through every pixel and writing the
+     * resulting color to the image buffer.
+     *
+     * @return this camera (for method chaining)
+     */
+    public Camera renderImage() {
+        for (int i = 0; i < _nY; i++)
+            for (int j = 0; j < _nX; j++)
+                castRay(j, i);
+        return this;
+    }
+
+    /**
+     * Overlays a grid on the rendered image by coloring every pixel whose row
+     * or column index is a multiple of {@code interval}.
+     *
+     * @param  interval the spacing between grid lines in pixels
+     * @param  color    the color of the grid lines
+     * @return          this camera (for method chaining)
+     */
+    public Camera printGrid(int interval, Color color) {
+        for (int i = 0; i < _nY; i++)
+            for (int j = 0; j < _nX; j++)
+                if (i % interval == 0 || j % interval == 0)
+                    _imageWriter.writePixel(j, i, color);
+        return this;
+    }
+
+    /**
+     * Writes the image buffer to a PNG file.
+     *
+     * @param  name the output file name (without {@code .png} extension)
+     * @return      this camera (for method chaining)
+     */
+    public Camera writeToImage(String name) {
+        _imageWriter.writeToImage(name);
+        return this;
     }
 
     /**
@@ -213,6 +272,22 @@ public class Camera implements Cloneable {
         }
 
         /**
+         * Sets the ray-tracing strategy for the camera.
+         *
+         * @param  scene                    the scene to render
+         * @param  type                     the desired ray-tracer type
+         * @return                          this builder
+         * @throws IllegalArgumentException if {@code type} is not supported
+         */
+        public Builder setRayTracer(Scene scene, RayTracerType type) {
+            _camera._rayTracer = switch (type) {
+                case SIMPLE -> new SimpleRayTracer(scene);
+                default     -> throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
+            };
+            return this;
+        }
+
+        /**
          * Validates all parameters and returns the fully initialised {@link Camera}.
          * <p>
          * The order of validation calls is mandatory.
@@ -227,6 +302,8 @@ public class Camera implements Cloneable {
             checkResolution();
             checkLocationAndDirection();
             checkViewPlane();
+            if (_camera._rayTracer == null)
+                setRayTracer(new Scene("default"), RayTracerType.SIMPLE);
             try {
                 return (Camera) _camera.clone();
             } catch (CloneNotSupportedException _) {
@@ -235,7 +312,7 @@ public class Camera implements Cloneable {
         }
 
         /**
-         * Validates that resolution values are positive.
+         * Validates that resolution values are positive and initialises the image buffer.
          *
          * @throws IllegalArgumentException if {@code nX} or {@code nY} is not positive
          */
@@ -244,6 +321,7 @@ public class Camera implements Cloneable {
                 throw new IllegalArgumentException("nX must be positive, got: " + _camera._nX);
             if (_camera._nY <= 0)
                 throw new IllegalArgumentException("nY must be positive, got: " + _camera._nY);
+            _camera._imageWriter = new ImageWriter(_camera._nX, _camera._nY);
         }
 
         /**
