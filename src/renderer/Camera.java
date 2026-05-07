@@ -7,7 +7,6 @@ import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
 import scene.Scene;
-
 import static primitives.Util.isZero;
 
 /**
@@ -26,47 +25,75 @@ import static primitives.Util.isZero;
  */
 public class Camera implements Cloneable {
 
-    /** Camera location in 3D space. */
-    Point _p0;
+    /**
+     * Camera location in 3D space.
+     */
+    private Point _p0;
 
-    /** Normalized forward direction vector. */
-    Vector _vTo;
+    /**
+     * Normalized forward direction vector.
+     */
+    private Vector _vTo;
 
-    /** Normalized up direction vector (orthogonal to {@code _vTo}). */
-    Vector _vUp;
+    /**
+     * Normalized up direction vector (orthogonal to {@code _vTo}).
+     */
+    private Vector _vUp;
 
-    /** Normalized right direction vector, computed as {@code _vTo × _vUp}. */
-    Vector _vRight;
+    /**
+     * Normalized right direction vector, computed as {@code _vTo × _vUp}.
+     */
+    private Vector _vRight;
 
-    /** Physical width of the view plane. */
-    double _width;
+    /**
+     * Physical width of the view plane.
+     */
+    private double _width;
 
-    /** Physical height of the view plane. */
-    double _height;
+    /**
+     * Physical height of the view plane.
+     */
+    private double _height;
 
-    /** Distance from the camera to the view plane. */
-    double _distance;
+    /**
+     * Distance from the camera to the view plane.
+     */
+    private double _distance;
 
-    /** Number of pixels along the horizontal axis. */
-    int _nX = 1;
+    /**
+     * Number of pixels along the horizontal axis.
+     */
+    private int _nX = 1;
 
-    /** Number of pixels along the vertical axis. */
-    int _nY = 1;
+    /**
+     * Number of pixels along the vertical axis.
+     */
+    private int _nY = 1;
 
-    /** Center point of the view plane (pre-computed in {@link Builder#build()}). */
-    Point _vpCenter;
+    /**
+     * Center point of the view plane (pre-computed in {@link Builder#build()}).
+     */
+    private Point _vpCenter;
 
-    /** Width of a single pixel (pre-computed in {@link Builder#build()}). */
-    double _pixelWidth;
+    /**
+     * Width of a single pixel (pre-computed in {@link Builder#build()}).
+     */
+    private double _pixelWidth;
 
-    /** Height of a single pixel (pre-computed in {@link Builder#build()}). */
-    double _pixelHeight;
+    /**
+     * Height of a single pixel (pre-computed in {@link Builder#build()}).
+     */
+    private double _pixelHeight;
 
-    /** Ray tracer used to compute pixel colors during rendering. */
-    RayTracerBase _rayTracer;
+    /**
+     * Ray tracer used to compute pixel colors during rendering.
+     */
+    private RayTracerBase _rayTracer;
 
-    /** Image buffer used to accumulate and export pixel colors. */
-    ImageWriter _imageWriter;
+    /**
+     * Image buffer used to accumulate and export pixel colors.
+     */
+    private ImageWriter _imageWriter;
 
     /**
      * Private default constructor.
@@ -74,7 +101,8 @@ public class Camera implements Cloneable {
      * Instances are created only through {@link Builder}.
      * </p>
      */
-    private Camera() {}
+    private Camera() {
+    }
 
     /**
      * Returns a new {@link Builder} for constructing a {@link Camera}.
@@ -93,9 +121,9 @@ public class Camera implements Cloneable {
      * and {@code yIndex} is the row index (vertical, along {@code _vUp}).
      * </p>
      *
-     * @param  xIndex column index of the pixel (0-based, left to right)
-     * @param  yIndex row index of the pixel (0-based, top to bottom)
-     * @return        the ray from the camera location through the pixel center
+     * @param xIndex column index of the pixel (0-based, left to right)
+     * @param yIndex row index of the pixel (0-based, top to bottom)
+     * @return the ray from the camera location through the pixel center
      */
     public Ray constructRay(int xIndex, int yIndex) {
         double xJ = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
@@ -112,8 +140,8 @@ public class Camera implements Cloneable {
      * Casts a ray through pixel {@code (xIndex, yIndex)}, traces it, and writes
      * the resulting color to the image buffer.
      *
-     * @param  xIndex the pixel column index (0-based)
-     * @param  yIndex the pixel row index (0-based)
+     * @param xIndex the pixel column index (0-based)
+     * @param yIndex the pixel row index (0-based)
      */
     private void castRay(int xIndex, int yIndex) {
         _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(constructRay(xIndex, yIndex)));
@@ -136,9 +164,9 @@ public class Camera implements Cloneable {
      * Overlays a grid on the rendered image by coloring every pixel whose row
      * or column index is a multiple of {@code interval}.
      *
-     * @param  interval the spacing between grid lines in pixels
-     * @param  color    the color of the grid lines
-     * @return          this camera (for method chaining)
+     * @param interval the spacing between grid lines in pixels
+     * @param color    the color of the grid lines
+     * @return this camera (for method chaining)
      */
     public Camera printGrid(int interval, Color color) {
         for (int i = 0; i < _nY; i++)
@@ -151,8 +179,8 @@ public class Camera implements Cloneable {
     /**
      * Writes the image buffer to a PNG file.
      *
-     * @param  name the output file name (without {@code .png} extension)
-     * @return      this camera (for method chaining)
+     * @param name the output file name (without {@code .png} extension)
+     * @return this camera (for method chaining)
      */
     public Camera writeToImage(String name) {
         _imageWriter.writeToImage(name);
@@ -169,23 +197,31 @@ public class Camera implements Cloneable {
      */
     public static class Builder {
 
-        /** The camera being built. */
+        /**
+         * The camera being built.
+         */
         private final Camera _camera = new Camera();
 
-        /** Explicit forward direction (null if a target point was supplied instead). */
+        /**
+         * Explicit forward direction (null if a target point was supplied instead).
+         */
         private Vector _vTo = null;
 
-        /** Target point the camera looks at (null if an explicit forward vector was supplied). */
+        /**
+         * Target point the camera looks at (null if an explicit forward vector was supplied).
+         */
         private Point _target = null;
 
-        /** General up vector used to derive the orthonormal frame. */
+        /**
+         * General up vector used to derive the orthonormal frame.
+         */
         private Vector _vUp = Vector.AXIS_Y;
 
         /**
          * Sets the camera location.
          *
-         * @param  location  the position of the camera in 3D space
-         * @return           this builder
+         * @param location the position of the camera in 3D space
+         * @return this builder
          */
         public Builder setLocation(Point location) {
             _camera._p0 = location;
@@ -195,28 +231,28 @@ public class Camera implements Cloneable {
         /**
          * Sets the camera orientation using explicit forward and up vectors.
          *
-         * @param  to  the forward direction vector
-         * @param  up  the general up direction vector
-         * @return     this builder
+         * @param to the forward direction vector
+         * @param up the general up direction vector
+         * @return this builder
          */
         public Builder setDirection(Vector to, Vector up) {
-            _vTo     = to;
-            _vUp     = up;
-            _target  = null;
+            _vTo = to;
+            _vUp = up;
+            _target = null;
             return this;
         }
 
         /**
          * Sets the camera orientation using a target point and an explicit up vector.
          *
-         * @param  target  the point the camera looks at
-         * @param  up      the general up direction vector
-         * @return         this builder
+         * @param target the point the camera looks at
+         * @param up     the general up direction vector
+         * @return this builder
          */
         public Builder setDirection(Point target, Vector up) {
             _target = target;
-            _vUp    = up;
-            _vTo    = null;
+            _vUp = up;
+            _vTo = null;
             return this;
         }
 
@@ -224,25 +260,25 @@ public class Camera implements Cloneable {
          * Sets the camera orientation using a target point; the up direction
          * defaults to the world Y axis ({@link Vector#AXIS_Y}).
          *
-         * @param  target  the point the camera looks at
-         * @return         this builder
+         * @param target the point the camera looks at
+         * @return this builder
          */
         public Builder setDirection(Point target) {
             _target = target;
-            _vTo    = null;
-            _vUp    = Vector.AXIS_Y;
+            _vTo = null;
+            _vUp = Vector.AXIS_Y;
             return this;
         }
 
         /**
          * Sets the physical size of the view plane.
          *
-         * @param  width   the horizontal size of the view plane
-         * @param  height  the vertical size of the view plane
-         * @return         this builder
+         * @param width  the horizontal size of the view plane
+         * @param height the vertical size of the view plane
+         * @return this builder
          */
         public Builder setVpSize(double width, double height) {
-            _camera._width  = width;
+            _camera._width = width;
             _camera._height = height;
             return this;
         }
@@ -250,8 +286,8 @@ public class Camera implements Cloneable {
         /**
          * Sets the distance from the camera to the view plane.
          *
-         * @param  distance  the distance to the view plane
-         * @return           this builder
+         * @param distance the distance to the view plane
+         * @return this builder
          */
         public Builder setVpDistance(double distance) {
             _camera._distance = distance;
@@ -261,9 +297,9 @@ public class Camera implements Cloneable {
         /**
          * Sets the pixel resolution of the view plane.
          *
-         * @param  nX  number of pixels horizontally
-         * @param  nY  number of pixels vertically
-         * @return     this builder
+         * @param nX number of pixels horizontally
+         * @param nY number of pixels vertically
+         * @return this builder
          */
         public Builder setResolution(int nX, int nY) {
             _camera._nX = nX;
@@ -274,15 +310,15 @@ public class Camera implements Cloneable {
         /**
          * Sets the ray-tracing strategy for the camera.
          *
-         * @param  scene                    the scene to render
-         * @param  type                     the desired ray-tracer type
-         * @return                          this builder
+         * @param scene the scene to render
+         * @param type  the desired ray-tracer type
+         * @return this builder
          * @throws IllegalArgumentException if {@code type} is not supported
          */
         public Builder setRayTracer(Scene scene, RayTracerType type) {
             _camera._rayTracer = switch (type) {
                 case SIMPLE -> new SimpleRayTracer(scene);
-                default     -> throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
+                default -> throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
             };
             return this;
         }
@@ -294,9 +330,9 @@ public class Camera implements Cloneable {
          * </p>
          *
          * @return a ready-to-use {@code Camera}
-         * @throws IllegalArgumentException  if any numeric parameter is non-positive
-         *                                   or if the orientation vectors are parallel
-         * @throws MissingResourceException  if location or direction data are absent
+         * @throws IllegalArgumentException if any numeric parameter is non-positive
+         *                                  or if the orientation vectors are parallel
+         * @throws MissingResourceException if location or direction data are absent
          */
         public Camera build() {
             checkResolution();
@@ -328,8 +364,8 @@ public class Camera implements Cloneable {
          * Validates location and direction data, computes and normalises the
          * three orientation vectors, and updates the camera.
          *
-         * @throws MissingResourceException  if location, direction, or up vector is missing
-         * @throws IllegalArgumentException  if the forward and up vectors are parallel
+         * @throws MissingResourceException if location, direction, or up vector is missing
+         * @throws IllegalArgumentException if the forward and up vectors are parallel
          */
         private void checkLocationAndDirection() {
             if (_camera._p0 == null)
@@ -371,8 +407,8 @@ public class Camera implements Cloneable {
             if (_camera._distance <= 0)
                 throw new IllegalArgumentException("View-plane distance must be positive");
 
-            _camera._vpCenter    = _camera._p0.add(_camera._vTo.scale(_camera._distance));
-            _camera._pixelWidth  = _camera._width  / _camera._nX;
+            _camera._vpCenter = _camera._p0.add(_camera._vTo.scale(_camera._distance));
+            _camera._pixelWidth = _camera._width / _camera._nX;
             _camera._pixelHeight = _camera._height / _camera._nY;
         }
     }
