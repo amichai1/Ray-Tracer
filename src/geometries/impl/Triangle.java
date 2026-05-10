@@ -1,13 +1,12 @@
 package geometries.impl;
 
-import static primitives.Util.alignZero;
-import static primitives.Util.isZero;
-
 import java.util.List;
 
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
 
 /**
  * Represents a triangle in 3D space.
@@ -35,15 +34,15 @@ public final class Triangle extends Polygon {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
-        List<Point> planeResult = _plane.findIntersections(ray);
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+        List<Intersection> planeResult = _plane.calcIntersections(ray);
         if (planeResult == null) return null;
 
-        Point  p  = planeResult.getFirst();
-        Vector n  = _plane.getNormal(p);
-        Point  v1 = _vertices.get(0);
-        Point  v2 = _vertices.get(1);
-        Point  v3 = _vertices.get(2);
+        Point p = planeResult.getFirst().point;
+        Vector n = _plane.getNormal(p);
+        Point v1 = _vertices.get(0);
+        Point v2 = _vertices.get(1);
+        Point v3 = _vertices.get(2);
 
         try {
             double d1 = alignZero(v2.subtract(v1).crossProduct(p.subtract(v1)).dotProduct(n));
@@ -52,7 +51,7 @@ public final class Triangle extends Polygon {
 
             if (isZero(d1) || isZero(d2) || isZero(d3)) return null; // on edge or vertex
             return (d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0)
-                   ? planeResult : null;
+                    ? List.of(new Intersection(this, p)) : null;
         } catch (IllegalArgumentException e) {
             return null; // intersection point coincides with a vertex
         }

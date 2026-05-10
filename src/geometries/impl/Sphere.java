@@ -1,12 +1,11 @@
 package geometries.impl;
 
-import static primitives.Util.alignZero;
-
 import java.util.List;
 
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import static primitives.Util.alignZero;
 
 /**
  * Represents a sphere in 3D space.
@@ -43,16 +42,16 @@ public final class Sphere extends RadialGeometry {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         double tm;
         double uLenSq;
         try {
             Vector u = _center.subtract(ray.origin());
-            tm    = ray.direction().dotProduct(u);
+            tm = ray.direction().dotProduct(u);
             uLenSq = u.lengthSquared();
         } catch (IllegalArgumentException e) {
             // ray origin is at the sphere center: t1 = -r (excluded), t2 = r
-            return List.of(ray.getPoint(_radius));
+            return List.of(new Intersection(this, ray.getPoint(_radius)));
         }
 
         double d2 = uLenSq - tm * tm;
@@ -63,7 +62,7 @@ public final class Sphere extends RadialGeometry {
         double t2 = alignZero(tm + th);
 
         if (t2 <= 0) return null;
-        return t1 <= 0 ? List.of(ray.getPoint(t2))
-                       : List.of(ray.getPoint(t1), ray.getPoint(t2));
+        return t1 <= 0 ? List.of(new Intersection(this, ray.getPoint(t2)))
+                : List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
     }
 }

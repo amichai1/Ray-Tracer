@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import geometries.api.Intersectable;
-import primitives.Point;
 import primitives.Ray;
 
 /**
@@ -30,12 +29,13 @@ public class Geometries extends Intersectable {
     /**
      * Constructs an empty {@code Geometries} scene.
      */
-    public Geometries() { }
+    public Geometries() {
+    }
 
     /**
      * Constructs a {@code Geometries} scene and adds the given objects to it.
      *
-     * @param  geometries one or more intersectable objects to add
+     * @param geometries one or more intersectable objects to add
      */
     public Geometries(Intersectable... geometries) {
         add(geometries);
@@ -44,22 +44,22 @@ public class Geometries extends Intersectable {
     /**
      * Adds one or more intersectable objects to this composite.
      *
-     * @param  geometries one or more intersectable objects to add
+     * @param geometries one or more intersectable objects to add
      */
     public void add(Intersectable... geometries) {
         _geometries.addAll(List.of(geometries));
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
-        List<Point> result = null;
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+        List<Intersection> result = null;
         for (Intersectable g : _geometries) {
-            List<Point> pts = g.findIntersections(ray);
-            if (pts != null) {
+            List<Intersection> its = g.calcIntersections(ray);
+            if (its != null) {
                 if (result == null)
-                    result = new ArrayList<>(pts);
+                    result = new ArrayList<>(its);
                 else
-                    result.addAll(pts);
+                    result.addAll(its);
             }
         }
         return result;
