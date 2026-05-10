@@ -21,7 +21,6 @@ public class Tube extends RadialGeometry {
 
     /**
      * The central axis of the tube.
-     *according to the logic of the updated instructions "axis" should have a ' _ '
      */
     protected final Ray _axis;
 
@@ -39,13 +38,13 @@ public class Tube extends RadialGeometry {
     @Override
     public Vector getNormal(Point point) {
         Vector axis = _axis.direction();
-        double t    = axis.dotProduct(point.subtract(_axis.origin()));
-        Point proj  = _axis.getPoint(t);
+        double t = axis.dotProduct(point.subtract(_axis.origin()));
+        Point proj = _axis.getPoint(t);
         return point.subtract(proj).normalize();
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         return null;
     }
 }

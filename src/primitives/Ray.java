@@ -3,6 +3,8 @@ package primitives;
 import java.util.List;
 import java.util.Objects;
 
+import geometries.api.Intersectable.Intersection;
+
 /**
  * Represents a ray (half-line) in a 3D Cartesian coordinate system.
  * <p>
@@ -49,8 +51,8 @@ public final class Ray {
      * When {@code t} is zero (or effectively zero), the origin is returned.
      * </p>
      *
-     * @param  t the signed distance along the direction vector
-     * @return   the point {@code origin + t * direction}
+     * @param t the signed distance along the direction vector
+     * @return the point {@code origin + t * direction}
      */
     public Point getPoint(double t) {
         try {
@@ -79,29 +81,47 @@ public final class Ray {
     }
 
     /**
+     * Finds the intersection in the given list that is closest to this ray's origin.
+     *
+     * @param intersections the list of candidate intersections
+     * @return the closest intersection, or null if list is empty/null
+     */
+    public Intersection findClosestIntersection(List<Intersection> intersections) {
+        if (intersections == null || intersections.isEmpty()) return null;
+
+        Intersection closest = null;
+        double minDist = Double.POSITIVE_INFINITY;
+
+        for (Intersection intersection : intersections) {
+            double d = _origin.distanceSquared(intersection.point);
+            if (d < minDist) {
+                minDist = d;
+                closest = intersection;
+            }
+        }
+        return closest;
+    }
+
+    /**
      * Finds the point in the given list that is closest to this ray's origin.
      * <p>
      * The list must not be empty. Returns {@code null} if {@code points} is
      * {@code null}.
      * </p>
      *
-     * @param  points the list of candidate points; must not be empty
-     * @return        the closest point to the ray's origin, or {@code null} if
-     *                {@code points} is {@code null}
+     * @param points the list of candidate points; must not be empty
+     * @return the closest point to the ray's origin, or {@code null} if
+     * {@code points} is {@code null}
      */
     public Point findClosestPoint(List<Point> points) {
-        if (points == null) return null;
-        Point  closest = null;
-        double minDist = Double.POSITIVE_INFINITY;
-        for (Point p : points) {
-            double d = _origin.distanceSquared(p);
-            if (d < minDist) {
-                minDist = d;
-                closest = p;
-            }
-        }
-        return closest;
+        return points == null ? null
+                : findClosestIntersection(
+                points.stream()
+                        .map(point -> new Intersection(null, point))
+                        .toList()
+        ).point;
     }
+
 
     @Override
     public int hashCode() {

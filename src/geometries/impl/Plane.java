@@ -1,14 +1,13 @@
 package geometries.impl;
 
-import static primitives.Util.alignZero;
-import static primitives.Util.isZero;
-
 import java.util.List;
 
 import geometries.api.Geometry;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
 
 /**
  * Represents an infinite plane in 3D space.
@@ -70,7 +69,7 @@ public final class Plane extends Geometry {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         double nv = _normal.dotProduct(ray.direction());
         if (isZero(nv)) return null;
 
@@ -82,6 +81,6 @@ public final class Plane extends Geometry {
         }
 
         double t = alignZero(_normal.dotProduct(qMinusP0) / nv);
-        return t <= 0 ? null : List.of(ray.getPoint(t));
+        return t <= 0 ? null : List.of(new Intersection(this, ray.getPoint(t)));
     }
 }
