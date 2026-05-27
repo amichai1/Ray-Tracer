@@ -1,13 +1,12 @@
 package renderer;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.jupiter.api.Test;
-
 import lighting.SpotLight;
+import org.junit.jupiter.api.Test;
 import primitives.Color;
 import primitives.Point;
 import primitives.Vector;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link SpotLight}.
@@ -16,17 +15,27 @@ import primitives.Vector;
  */
 class SpotLightTests {
 
-    /** Default constructor to satisfy JavaDoc generator */
+    /**
+     * Default constructor to satisfy JavaDoc generator
+     */
     SpotLightTests() { /* to satisfy JavaDoc generator */ }
 
-    /** Raw intensity */
-    private static final Color  INTENSITY  = new Color(400, 300, 200);
-    /** Light position at origin */
-    private static final Point  POSITION   = new Point(0, 0, 0);
-    /** Spotlight points in the +Z direction */
-    private static final Vector DIRECTION  = new Vector(0, 0, 1);
+    /**
+     * Raw intensity
+     */
+    private static final Color INTENSITY = new Color(400, 300, 200);
+    /**
+     * Light position at origin
+     */
+    private static final Point POSITION = new Point(0, 0, 0);
+    /**
+     * Spotlight points in the +Z direction
+     */
+    private static final Vector DIRECTION = new Vector(0, 0, 1);
 
-    /** EP01 – getL returns normalized direction from position to point */
+    /**
+     * EP01 – getL returns normalized direction from position to point
+     */
     @Test
     void testGetL() {
         SpotLight light = new SpotLight(INTENSITY, POSITION, DIRECTION);
@@ -36,7 +45,9 @@ class SpotLightTests {
                 "getL should delegate to PointLight: normalized (p - position)");
     }
 
-    /** BV01 – getL at the light position throws IllegalArgumentException */
+    /**
+     * BV01 – getL at the light position throws IllegalArgumentException
+     */
     @Test
     void testGetLAtPosition() {
         SpotLight light = new SpotLight(INTENSITY, POSITION, DIRECTION);
@@ -45,18 +56,21 @@ class SpotLightTests {
                 "getL at the light position should throw (zero vector)");
     }
 
-    /** EP01 – point in front of spotlight (dir·l > 0) → attenuated intensity */
+    /**
+     * EP01 – point in front of spotlight (dir·l > 0) → attenuated intensity
+     */
     @Test
     void testGetIntensityInFront() {
         SpotLight light = new SpotLight(INTENSITY, POSITION, DIRECTION);
         // p is directly in front: l = (0,0,1), dir = (0,0,1), dir·l = 1
         Point p = new Point(0, 0, 10);
-        Color expected = INTENSITY; // scale(1) * I₀/1 = I₀
-        assertEquals(expected, light.getIntensity(p),
+        assertEquals(INTENSITY, light.getIntensity(p),
                 "Point directly in front: beam factor=1, default no attenuation → I₀");
     }
 
-    /** EP02 – point behind spotlight (dir·l ≤ 0) → Color.BLACK */
+    /**
+     * EP02 – point behind spotlight (dir·l ≤ 0) → Color.BLACK
+     */
     @Test
     void testGetIntensityBehind() {
         SpotLight light = new SpotLight(INTENSITY, POSITION, DIRECTION);
@@ -67,7 +81,9 @@ class SpotLightTests {
                 "Point behind spotlight should receive no light");
     }
 
-    /** BV01 – point coincides with light position: d=0, denominator=kC=1 → I₀ * beamFactor */
+    /**
+     * BV01 – point coincides with light position: d=0, denominator=kC=1 → I₀ * beamFactor
+     */
     @Test
     void testGetIntensityAtPosition() {
         SpotLight light = new SpotLight(INTENSITY, POSITION, DIRECTION);
@@ -79,7 +95,9 @@ class SpotLightTests {
                 "getIntensity at the light position should throw via getL");
     }
 
-    /** BV02 – point at 90° to spotlight direction → Color.BLACK (dir·l = 0) */
+    /**
+     * BV02 – point at 90° to spotlight direction → Color.BLACK (dir·l = 0)
+     */
     @Test
     @SuppressWarnings("java:S109")
     void testGetIntensityPerpendicular() {
