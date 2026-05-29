@@ -53,13 +53,14 @@ public class Geometries extends Intersectable {
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         List<Intersection> result = null;
-        for (Intersectable g : _geometries) {
-            List<Intersection> its = g.calcIntersections(ray);
-            if (its != null) {
-                if (result == null)
-                    result = new ArrayList<>(its);
+        for (Intersectable geometry : _geometries) {
+            List<Intersection> intersections = geometry.calcIntersections(ray);
+            if (intersections != null) {
+                if (result == null) {
+                    result = new ArrayList<>(intersections);
+                }
                 else
-                    result.addAll(its);
+                    result.addAll(intersections);
             }
         }
         return result;

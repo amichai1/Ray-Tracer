@@ -58,6 +58,9 @@ public final class SpotLight extends PointLight {
     @Override
     public Color getIntensity(Point p) {
         double beamFactor = alignZero(_direction.dotProduct(getL(p)));
-        return beamFactor <= 0 ? Color.BLACK : super.getIntensity(p).scale(beamFactor);
+        if( beamFactor <= 0 ){
+            return Color.BLACK;
+        }
+        return  super.getIntensity(p).scale(beamFactor);
     }
 }

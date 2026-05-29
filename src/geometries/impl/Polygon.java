@@ -60,7 +60,9 @@ public class Polygon extends Geometry {
         // Create the supporting plane using the first three vertices.
         // The plane stores the constant normal of the polygon.
         _plane = new Plane(vertices[0], vertices[1], vertices[2]);
-        if (_size == 3) return; // no need for more tests for a Triangle
+        if (_size == 3) {
+            return; // no need for more tests for a Triangle
+        }
 
         Vector n = _plane.getNormal(vertices[0]);
         // Subtracting identical vertices would create a zero vector (illegal)
@@ -74,12 +76,14 @@ public class Polygon extends Geometry {
         for (var i = 1; i < _size; ++i) {
             // Test that the point is in the same plane as calculated originally
             if (!isZero(vertices[i].subtract(vertices[0]).dotProduct(n)))
-                throw new IllegalArgumentException("All vertices of a polygon must lay in the same plane");
+                throw new IllegalArgumentException(
+                        "All vertices of a polygon must lay in the same plane");
             // Test the consequent edges have
             edge1 = edge2;
             edge2 = vertices[i].subtract(vertices[i - 1]);
             if (positive != (edge1.crossProduct(edge2).dotProduct(n) > 0))
-                throw new IllegalArgumentException("All vertices must be ordered and the polygon must be convex");
+                throw new IllegalArgumentException(
+                        "All vertices must be ordered and the polygon must be convex");
         }
     }
 

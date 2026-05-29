@@ -39,8 +39,12 @@ public final class Cylinder extends Tube {
     public Vector getNormal(Point point) {
         Vector axis = _axis.direction();
         double t    = axis.dotProduct(point.subtract(_axis.origin()));
-        if (Util.isZero(t))          return axis.scale(-1);
-        if (Util.isZero(t - _height)) return axis;
+        if (Util.isZero(t)){
+            return axis.scale(-1);
+        }
+        if (Util.isZero(t - _height)) {
+            return axis;
+        }
         return super.getNormal(point);
     }
 }

@@ -93,7 +93,9 @@ public class Point {
 
     @Override
     public final boolean equals(Object obj) {
-        if (this == obj) return true;
+        if (this == obj){
+            return true;
+        }
         return obj instanceof Point other && _xyz.equals(other._xyz);
     }
 
