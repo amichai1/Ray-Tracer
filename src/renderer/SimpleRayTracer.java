@@ -39,9 +39,11 @@ final class SimpleRayTracer extends RayTracerBase {
      *         ray is tangent to the surface
      */
     private Color calcColor(Intersection intersection, Vector v) {
-        return !preprocessIntersection(intersection, v) ? Color.BLACK
-                : _scene.ambientLight.getIntensity().scale(intersection.material.kA)
-                        .add(calcLocalEffects(intersection));
+        if (!preprocessIntersection(intersection, v))
+            return Color.BLACK;
+        Color ambientIntensity = _scene.ambientLight.getIntensity();
+        Color scaledAmbient =ambientIntensity.scale(intersection.material.kA);
+        return scaledAmbient.add(calcLocalEffects(intersection));
     }
 
     /**

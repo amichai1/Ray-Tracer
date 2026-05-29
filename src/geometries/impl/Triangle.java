@@ -49,9 +49,13 @@ public final class Triangle extends Polygon {
             double d2 = alignZero(v3.subtract(v2).crossProduct(p.subtract(v2)).dotProduct(n));
             double d3 = alignZero(v1.subtract(v3).crossProduct(p.subtract(v3)).dotProduct(n));
 
-            if (isZero(d1) || isZero(d2) || isZero(d3)) return null; // on edge or vertex
-            return (d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0)
-                    ? List.of(new Intersection(this, p)) : null;
+            if (isZero(d1) || isZero(d2) || isZero(d3)) {
+                return null; // on edge or vertex
+            }
+            if( (d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0) ) {
+                return List.of(new Intersection(this, p));
+            }
+            return null;
         } catch (IllegalArgumentException e) {
             return null; // intersection point coincides with a vertex
         }

@@ -71,7 +71,9 @@ public final class Plane extends Geometry {
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         double nv = _normal.dotProduct(ray.direction());
-        if (isZero(nv)) return null;
+        if (isZero(nv)) {
+            return null;
+        }
 
         Vector qMinusP0;
         try {
@@ -81,6 +83,9 @@ public final class Plane extends Geometry {
         }
 
         double t = alignZero(_normal.dotProduct(qMinusP0) / nv);
-        return t <= 0 ? null : List.of(new Intersection(this, ray.getPoint(t)));
+        if(t <= 0){
+            return  null;
+        }
+        return List.of(new Intersection(this, ray.getPoint(t)));
     }
 }

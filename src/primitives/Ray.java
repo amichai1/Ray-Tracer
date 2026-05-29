@@ -2,6 +2,7 @@ package primitives;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import geometries.api.Intersectable.Intersection;
 
@@ -87,7 +88,8 @@ public final class Ray {
      * @return the closest intersection, or null if list is empty/null
      */
     public Intersection findClosestIntersection(List<Intersection> intersections) {
-        if (intersections == null || intersections.isEmpty()) return null;
+        if (intersections == null || intersections.isEmpty()){
+            return null; }
 
         Intersection closest = null;
         double minDist = Double.POSITIVE_INFINITY;
@@ -114,12 +116,12 @@ public final class Ray {
      * {@code points} is {@code null}
      */
     public Point findClosestPoint(List<Point> points) {
-        return points == null ? null
-                : findClosestIntersection(
-                points.stream()
-                        .map(point -> new Intersection(null, point))
-                        .toList()
-        ).point;
+        if (points == null)
+            return null;
+        Stream <Intersection> mapIntersections = points.stream()
+                .map(point -> new Intersection(null, point));
+        List<Intersection> listIntersections = mapIntersections.toList();
+        return findClosestIntersection( listIntersections ).point;
     }
 
 

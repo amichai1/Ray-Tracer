@@ -76,7 +76,9 @@ public abstract class Intersectable {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) return true;
+            if (this == obj) {
+                return true;
+            }
             return obj instanceof Intersection other
                     && this.point.equals(other.point)
                     && this.geometry.equals(other.geometry);
@@ -96,10 +98,10 @@ public abstract class Intersectable {
      */
     public final List<Point> findIntersections(Ray ray) {
         var intersections = calcIntersections(ray);
-        return intersections == null ? null
-                : intersections.stream()
-                .map(intersection -> intersection.point)
-                .toList();
+        if (intersections == null){
+            return null;
+        }
+        return intersections.stream().map(intersection -> intersection.point).toList();
     }
 
     /**

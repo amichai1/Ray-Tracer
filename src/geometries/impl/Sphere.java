@@ -55,14 +55,22 @@ public final class Sphere extends RadialGeometry {
         }
 
         double d2 = uLenSq - tm * tm;
-        if (alignZero(d2 - _radiusSquared) >= 0) return null; // miss or tangent
+        if (alignZero(d2 - _radiusSquared) >= 0) {
+            return null; // miss or tangent
+        }
 
         double th = Math.sqrt(_radiusSquared - d2);
         double t1 = alignZero(tm - th);
         double t2 = alignZero(tm + th);
 
-        if (t2 <= 0) return null;
-        return t1 <= 0 ? List.of(new Intersection(this, ray.getPoint(t2)))
-                : List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
+        if (t2 <= 0) {
+            return null;
+        }
+        if(t1 <= 0){
+            return List.of(new Intersection(this, ray.getPoint(t2)));
+        }
+
+        return List.of(new Intersection(this, ray.getPoint(t1)),
+                new Intersection(this, ray.getPoint(t2)));
     }
 }

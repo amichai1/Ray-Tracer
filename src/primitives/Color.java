@@ -39,7 +39,9 @@ public final class Color {
    public static final Color   BLACK = new Color();
 
    /** Private constructor for creating the constant black color. */
-   private Color() { _rgb = Double3.ZERO; }
+   private Color() {
+      _rgb = Double3.ZERO;
+   }
 
    /**
     * Creates a color from RGB components.
@@ -52,7 +54,9 @@ public final class Color {
     * @throws IllegalArgumentException if any component is negative
     */
    public Color(double r, double g, double b) {
-      if (r < 0 || g < 0 || b < 0) throw new IllegalArgumentException("Negative color component is illegal");
+      if (r < 0 || g < 0 || b < 0){
+         throw new IllegalArgumentException("Negative color component is illegal");
+      }
       _rgb = new Double3(r, g, b);
    }
 
@@ -62,8 +66,9 @@ public final class Color {
     * @throws IllegalArgumentException if any component is negative
     */
    private Color(Double3 rgb) {
-      if (rgb._d1() < 0 || rgb._d2() < 0 || rgb._d3() < 0)
+      if (rgb._d1() < 0 || rgb._d2() < 0 || rgb._d3() < 0) {
          throw new IllegalArgumentException("Negative color component is illegal");
+      }
       this._rgb = rgb;
    }
 
@@ -71,7 +76,9 @@ public final class Color {
     * Creates a color from a {@link java.awt.Color} object.
     * @param other the source color
     */
-   public Color(java.awt.Color other) { _rgb = new Double3(other.getRed(), other.getGreen(), other.getBlue()); }
+   public Color(java.awt.Color other) {
+      _rgb = new Double3(other.getRed(), other.getGreen(), other.getBlue());
+   }
 
    /**
     * Converts this color to a {@link java.awt.Color}.
@@ -110,8 +117,9 @@ public final class Color {
     * @throws IllegalArgumentException if any scale factor is negative
     */
    public Color scale(Double3 k) {
-      if (k._d1() < 0.0 || k._d2() < 0.0 || k._d3() < 0.0)
+      if (k._d1() < 0.0 || k._d2() < 0.0 || k._d3() < 0.0) {
          throw new IllegalArgumentException("Can't scale a color by a negative number");
+      }
       return new Color(_rgb.product(k));
    }
 
@@ -122,7 +130,9 @@ public final class Color {
     * @throws IllegalArgumentException if the scale factor is negative
     */
    public Color scale(double k) {
-      if (k < 0.0) throw new IllegalArgumentException("Can't scale a color by a negative number");
+      if (k < 0.0){
+         throw new IllegalArgumentException("Can't scale a color by a negative number");
+      }
       return new Color(_rgb.scale(k));
    }
 
@@ -133,7 +143,9 @@ public final class Color {
     * @throws IllegalArgumentException if {@code k} is less than 1
     */
    public Color reduce(int k) {
-      if (k < 1) throw new IllegalArgumentException("Reduction factor must be at least 1");
+      if (k < 1){
+         throw new IllegalArgumentException("Reduction factor must be at least 1");
+      }
       return new Color(_rgb.divide(k));
    }
 
@@ -150,11 +162,12 @@ public final class Color {
     */
    @Override
    public boolean equals(Object obj) {
-      return this == obj ||
-            (obj instanceof Color other &&
-                  abs(_rgb._d1() - other._rgb._d1()) < DELTA
-                  && abs(_rgb._d2() - other._rgb._d2()) < DELTA
-                  && abs(_rgb._d3() - other._rgb._d3()) < DELTA);
+      boolean isRealClose = (obj instanceof Color other &&
+              abs(_rgb._d1() - other._rgb._d1()) < DELTA
+              && abs(_rgb._d2() - other._rgb._d2()) < DELTA
+              && abs(_rgb._d3() - other._rgb._d3()) < DELTA);
+
+      return this == obj ||isRealClose;
    }
 
    /**
@@ -166,7 +179,9 @@ public final class Color {
     */
    public boolean equalColors(Color... colors) {
       for (Color color : colors)
-         if (!this.equals(color)) return false;
+         if (!this.equals(color)) {
+            return false;
+         }
       return true;
    }
 
@@ -193,5 +208,7 @@ public final class Color {
    }
 
    @Override
-   public String toString() { return "rgb:" + _rgb; }
+   public String toString() {
+      return "rgb:" + _rgb;
+   }
 }

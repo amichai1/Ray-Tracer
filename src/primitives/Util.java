@@ -66,7 +66,9 @@ public final class Util {
     * @param  number the number to check
     * @return        {@code true} if the number is considered zero
     */
-   public static boolean isZero(double number) { return getExp(number) < ACCURACY; }
+   public static boolean isZero(double number) {
+      return getExp(number) < ACCURACY;
+   }
 
    /**
     * Returns zero if the given value is numerically close to zero.
@@ -78,7 +80,9 @@ public final class Util {
     * @return        0.0 if the value is considered zero, otherwise the original
     *                value
     */
-   public static double alignZero(double number) { return getExp(number) < ACCURACY ? 0.0 : number; }
+   public static double alignZero(double number) {
+      return getExp(number) < ACCURACY ? 0.0 : number;
+   }
 
    /**
     * Checks whether two numbers have the same sign.
@@ -89,7 +93,9 @@ public final class Util {
     * @param  n2 second number
     * @return    {@code true} if both numbers are positive or both are negative
     */
-   public static boolean compareSign(double n1, double n2) { return (n1 > 0 && n2 > 0) || (n1 < 0 && n2 < 0); }
+   public static boolean compareSign(double n1, double n2) {
+      return (n1 > 0 && n2 > 0) || (n1 < 0 && n2 < 0);
+   }
 
    /**
     * Returns a random double in the range {@code [min, max)}.
@@ -97,6 +103,8 @@ public final class Util {
     * @param  max upper bound (exclusive)
     * @return     random value in the specified range
     */
-   public static double random(double min, double max) { return Math.random() * (max - min) + min; }
+   public static double random(double min, double max) {
+      return Math.random() * (max - min) + min;
+   }
 
 }
