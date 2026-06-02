@@ -7,6 +7,7 @@ import primitives.Material;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import static primitives.Util.alignZero;
 
 /**
  * Abstract base class for all objects that can be intersected by a ray.
@@ -39,22 +40,34 @@ public abstract class Intersectable {
          */
         public final Material material;
 
-        /** Cached surface normal at the intersection point. */
+        /**
+         * Cached surface normal at the intersection point.
+         */
         public Vector normal;
 
-        /** Cached ray direction vector (from camera). */
+        /**
+         * Cached ray direction vector (from camera).
+         */
         public Vector v;
 
-        /** Cached dot product of the ray direction and the surface normal. */
+        /**
+         * Cached dot product of the ray direction and the surface normal.
+         */
         public double vNormal;
 
-        /** The light source being evaluated in the current shading step. */
+        /**
+         * The light source being evaluated in the current shading step.
+         */
         public LightSource light;
 
-        /** Cached direction from the intersection point to the current light source. */
+        /**
+         * Cached direction from the intersection point to the current light source.
+         */
         public Vector l;
 
-        /** Cached dot product of the light direction and the surface normal. */
+        /**
+         * Cached dot product of the light direction and the surface normal.
+         */
         public double lNormal;
 
         /**
@@ -98,7 +111,7 @@ public abstract class Intersectable {
      */
     public final List<Point> findIntersections(Ray ray) {
         var intersections = calcIntersections(ray);
-        if (intersections == null){
+        if (intersections == null) {
             return null;
         }
         return intersections.stream().map(intersection -> intersection.point).toList();
@@ -113,7 +126,19 @@ public abstract class Intersectable {
      * there are none
      */
     public final List<Intersection> calcIntersections(Ray ray) {
-        return calcIntersectionsHelper(ray);
+        return calcIntersectionsHelper(ray, Double.POSITIVE_INFINITY);
+    }
+
+    /**
+     * Computes all intersections with the given ray up to {@code maxDistance}.
+     *
+     * @param ray         the ray to intersect with
+     * @param maxDistance the maximum allowed distance from the ray origin
+     * @return a list of {@link Intersection} records within range,
+     * or {@code null} if there are none
+     */
+    public final List<Intersection> calcIntersections(Ray ray, double maxDistance) {
+        return calcIntersectionsHelper(ray, maxDistance);
     }
 
     /**
@@ -124,4 +149,25 @@ public abstract class Intersectable {
      * there are none
      */
     protected abstract List<Intersection> calcIntersectionsHelper(Ray ray);
+
+    /**
+     * Template-method hook with max-distance support.
+     * <p>
+     * Default implementation calls {@link #calcIntersectionsHelper(Ray)} and
+     * filters out intersections beyond {@code maxDistance}. Subclasses may
+     * override for a more efficient early-exit computation.
+     * </p>
+     *
+     * @param ray         the ray to intersect with
+     * @param maxDistance the maximum allowed distance from the ray origin
+     * @return filtered intersections, or {@code null} if none
+     */
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
+        var all = calcIntersectionsHelper(ray);
+        if (all == null) return null;
+        var filtered = all.stream()
+                .filter(i -> alignZero(i.point.distance(ray.origin()) - maxDistance) <= 0)
+                .toList();
+        return filtered.isEmpty() ? null : filtered;
+    }
 }

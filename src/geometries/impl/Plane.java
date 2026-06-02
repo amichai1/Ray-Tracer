@@ -70,6 +70,11 @@ public final class Plane extends Geometry {
 
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+        return calcIntersectionsHelper(ray, Double.POSITIVE_INFINITY);
+    }
+
+    @Override
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         double nv = _normal.dotProduct(ray.direction());
         if (isZero(nv)) {
             return null;
@@ -83,8 +88,8 @@ public final class Plane extends Geometry {
         }
 
         double t = alignZero(_normal.dotProduct(qMinusP0) / nv);
-        if(t <= 0){
-            return  null;
+        if (t <= 0 || alignZero(t - maxDistance) > 0) {
+            return null;
         }
         return List.of(new Intersection(this, ray.getPoint(t)));
     }
