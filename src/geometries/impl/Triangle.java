@@ -35,8 +35,15 @@ public final class Triangle extends Polygon {
 
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray) {
-        List<Intersection> planeResult = _plane.calcIntersections(ray);
-        if (planeResult == null) return null;
+        return calcIntersectionsHelper(ray, Double.POSITIVE_INFINITY);
+    }
+
+    @Override
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
+        List<Intersection> planeResult = _plane.calcIntersections(ray, maxDistance);
+        if (planeResult == null) {
+            return null;
+        }
 
         Point p = planeResult.getFirst().point;
         Vector n = _plane.getNormal(p);
@@ -52,7 +59,7 @@ public final class Triangle extends Polygon {
             if (isZero(d1) || isZero(d2) || isZero(d3)) {
                 return null; // on edge or vertex
             }
-            if( (d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0) ) {
+            if ((d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0)) {
                 return List.of(new Intersection(this, p));
             }
             return null;

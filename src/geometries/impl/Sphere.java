@@ -43,6 +43,11 @@ public final class Sphere extends RadialGeometry {
 
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+        return calcIntersectionsHelper(ray, Double.POSITIVE_INFINITY);
+    }
+
+    @Override
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         double tm;
         double uLenSq;
         try {
@@ -50,7 +55,10 @@ public final class Sphere extends RadialGeometry {
             tm = ray.direction().dotProduct(u);
             uLenSq = u.lengthSquared();
         } catch (IllegalArgumentException e) {
-            // ray origin is at the sphere center: t1 = -r (excluded), t2 = r
+            // ray origin is at the sphere center: only forward intersection at t = radius
+            if (alignZero(_radius - maxDistance) > 0) {
+                return null;
+            }
             return List.of(new Intersection(this, ray.getPoint(_radius)));
         }
 
@@ -66,11 +74,15 @@ public final class Sphere extends RadialGeometry {
         if (t2 <= 0) {
             return null;
         }
-        if(t1 <= 0){
+        if (t1 > 0 && alignZero(t1 - maxDistance) <= 0) {
+            if (alignZero(t2 - maxDistance) <= 0)
+                return List.of(new Intersection(this, ray.getPoint(t1)),
+                        new Intersection(this, ray.getPoint(t2)));
+            return List.of(new Intersection(this, ray.getPoint(t1)));
+        }
+        if (alignZero(t2 - maxDistance) <= 0) {
             return List.of(new Intersection(this, ray.getPoint(t2)));
         }
-
-        return List.of(new Intersection(this, ray.getPoint(t1)),
-                new Intersection(this, ray.getPoint(t2)));
+        return null;
     }
 }

@@ -90,4 +90,9 @@ public class PointLight extends Light implements LightSource {
         double d = _position.distance(p);
         return _intensity.scale(1d / (_kC + _kL * d + _kQ * d * d));
     }
+
+    @Override
+    public double getDistance(Point point) {
+        return _position.distance(point);
+    }
 }

@@ -31,4 +31,12 @@ public interface LightSource {
      * @return   the attenuated intensity color at {@code p}
      */
     Color getIntensity(Point p);
+
+    /**
+     * Returns the distance from the given surface point to this light source.
+     *
+     * @param  point the surface point
+     * @return       the distance to the light source
+     */
+    double getDistance(Point point);
 }

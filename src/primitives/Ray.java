@@ -1,5 +1,7 @@
 package primitives;
 
+import static primitives.Util.isZero;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -30,6 +32,9 @@ public final class Ray {
      */
     private final Vector _direction;
 
+    /** Offset distance used to avoid self-intersection in secondary rays. */
+    private static final double DELTA = 0.1;
+
     /**
      * Constructs a ray from an origin point and a direction vector.
      * <p>
@@ -42,6 +47,21 @@ public final class Ray {
     public Ray(Point origin, Vector direction) {
         _origin = origin;
         _direction = direction.normalize();
+    }
+
+    /**
+     * Constructs a ray with an origin shifted slightly along the surface normal
+     * to avoid self-intersection artifacts caused by floating-point precision.
+     *
+     * @param  origin    the geometric intersection point
+     * @param  direction the direction of the secondary ray
+     * @param  normal    the surface normal at the intersection point
+     */
+    public Ray(Point origin, Vector direction, Vector normal) {
+        _direction = direction.normalize();
+        double vn = _direction.dotProduct(normal);
+        _origin = isZero(vn) ? origin
+                                  : origin.add(normal.scale(vn > 0 ? DELTA : -DELTA));
     }
 
     /**
