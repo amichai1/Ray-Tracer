@@ -165,9 +165,13 @@ public abstract class Intersectable {
     protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         var all = calcIntersectionsHelper(ray);
         if (all == null) return null;
-        var filtered = all.stream()
+        var stream = all.stream();
+        var filtered = stream
                 .filter(i -> alignZero(i.point.distance(ray.origin()) - maxDistance) <= 0)
                 .toList();
-        return filtered.isEmpty() ? null : filtered;
+        if (filtered.isEmpty()){
+            return null;
+        }
+        return filtered;
     }
 }

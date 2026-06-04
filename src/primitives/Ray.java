@@ -60,8 +60,15 @@ public final class Ray {
     public Ray(Point origin, Vector direction, Vector normal) {
         _direction = direction.normalize();
         double vn = _direction.dotProduct(normal);
-        _origin = isZero(vn) ? origin
-                                  : origin.add(normal.scale(vn > 0 ? DELTA : -DELTA));
+        if(isZero(vn)){
+            _origin = origin;
+        }
+        else if (vn > 0){
+            _origin = origin.add(normal.scale(DELTA));
+        }
+        else {
+            _origin = origin.add(normal.scale(-DELTA));
+        }
     }
 
     /**
