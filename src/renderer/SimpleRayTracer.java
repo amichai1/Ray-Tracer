@@ -53,13 +53,17 @@ final class SimpleRayTracer extends RayTracerBase {
      * @return the closest intersection, or {@code null} if none
      */
     private Intersection findClosestIntersection(Ray ray) {
-        return ray.findClosestIntersection(_scene.geometries.calcIntersections(ray));
+        var sceneGeometries = _scene.geometries.calcIntersections(ray);
+        return ray.findClosestIntersection(sceneGeometries);
     }
 
     @Override
     Color traceRay(Ray ray) {
         Intersection closest = findClosestIntersection(ray);
-        return closest == null ? _scene.background : calcColor(closest, ray.direction());
+        if(closest == null){
+            return _scene.background;
+        }
+        return calcColor(closest, ray.direction());
     }
 
     /**
@@ -76,7 +80,8 @@ final class SimpleRayTracer extends RayTracerBase {
             return Color.BLACK;
         Color ambientIntensity = _scene.ambientLight.getIntensity();
         Color scaledAmbient = ambientIntensity.scale(intersection.material.kA);
-        return scaledAmbient.add(calcColor(intersection, MAX_CALC_COLOR_LEVEL, INITIAL_K));
+        Color colorAtIntersect = calcColor(intersection, MAX_CALC_COLOR_LEVEL, INITIAL_K);
+        return scaledAmbient.add(colorAtIntersect);
     }
 
     /**
@@ -90,8 +95,11 @@ final class SimpleRayTracer extends RayTracerBase {
      */
     private Color calcColor(Intersection intersection, int level, Double3 k) {
         Color color = calcLocalEffects(intersection, k);
-        return level == 1 ? color :
-                color.add(calcGlobalEffects(intersection, level, k));
+        if(level == 1){
+            return color;
+        }
+        Color globalEffect =calcGlobalEffects(intersection, level, k);
+        return color.add(globalEffect);
     }
 
     /**
@@ -107,11 +115,11 @@ final class SimpleRayTracer extends RayTracerBase {
         for (LightSource lightSource : _scene.lights) {
             if (preprocessLightSource(intersection, lightSource)) {
                 Double3 ktr = transparency(intersection);
-                if (ktr.product(k).isGreaterThan(MIN_CALC_COLOR_K))
-                    color = color.add(
-                            lightSource.getIntensity(intersection.point)
-                                    .scale(ktr)
-                                    .scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
+                if (ktr.product(k).isGreaterThan(MIN_CALC_COLOR_K)) {
+                    Color IntensityTransparent = lightSource.getIntensity(intersection.point).scale(ktr);
+                    Double3 difusedPlusSpecular = calcDiffuse(intersection).add(calcSpecular(intersection));
+                    color = color.add(IntensityTransparent.scale(difusedPlusSpecular));
+                }
             }
         }
         return color;
@@ -138,9 +146,12 @@ final class SimpleRayTracer extends RayTracerBase {
         Vector r = intersection.l.subtract(
                 intersection.normal.scale(2 * intersection.lNormal));
         double minusVR = alignZero(-intersection.v.dotProduct(r));
-        return minusVR <= 0 ? Double3.ZERO
-                : intersection.material.kS.scale(
-                Math.pow(minusVR, intersection.material.nShininess));
+        if (minusVR <= 0){
+            return Double3.ZERO;
+        }
+        var materialShininess = intersection.material.nShininess;
+        var ksOfMaterial =intersection.material.kS;
+        return ksOfMaterial.scale(Math.pow(minusVR,materialShininess ));
     }
 
     /**
@@ -239,8 +250,8 @@ final class SimpleRayTracer extends RayTracerBase {
      * @return the reflection ray with a self-intersection-free origin
      */
     private Ray constructReflectionRay(Intersection intersection) {
-        Vector r = intersection.v.subtract(
-                intersection.normal.scale(2 * intersection.vNormal));
+        var normalOffsetting = intersection.normal.scale(2 * intersection.vNormal);
+        Vector r = intersection.v.subtract(normalOffsetting);
         return new Ray(intersection.point, r, intersection.normal);
     }
 

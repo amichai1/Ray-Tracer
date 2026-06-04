@@ -59,7 +59,8 @@ public final class Sphere extends RadialGeometry {
             if (alignZero(_radius - maxDistance) > 0) {
                 return null;
             }
-            return List.of(new Intersection(this, ray.getPoint(_radius)));
+            var intersected = new Intersection(this, ray.getPoint(_radius));
+            return List.of(intersected);
         }
 
         double d2 = uLenSq - tm * tm;
@@ -75,13 +76,17 @@ public final class Sphere extends RadialGeometry {
             return null;
         }
         if (t1 > 0 && alignZero(t1 - maxDistance) <= 0) {
-            if (alignZero(t2 - maxDistance) <= 0)
-                return List.of(new Intersection(this, ray.getPoint(t1)),
-                        new Intersection(this, ray.getPoint(t2)));
-            return List.of(new Intersection(this, ray.getPoint(t1)));
+            if (alignZero(t2 - maxDistance) <= 0) {
+                var intersected1 = new Intersection(this, ray.getPoint(t1));
+                var intersected2 = new Intersection(this, ray.getPoint(t2));
+                return List.of(intersected1, intersected2);
+            }
+            var intersected = new Intersection(this, ray.getPoint(t1));
+            return List.of(intersected);
         }
         if (alignZero(t2 - maxDistance) <= 0) {
-            return List.of(new Intersection(this, ray.getPoint(t2)));
+           var intersected = new Intersection(this, ray.getPoint(t2));
+           return List.of(intersected);
         }
         return null;
     }
