@@ -1,6 +1,7 @@
 package geometries.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
@@ -117,6 +118,26 @@ class TriangleTests {
       // Ray from (−1,3,5) dir (0,0,−1); plane intersection (−1,3,0):
       // parameter t=1.5 along edge direction from (2,0,0) → beyond vertex (0,2,0).
       assertNull(TRI.findIntersections(new Ray(new Point(-1, 3, 5), new Vector(0, 0, -1))), ERR);
+   }
+
+   /**
+    * Test method for {@link geometries.api.Intersectable#calcIntersections(Ray, double)}.
+    * <p>
+    * Two cases: max-distance cutoff before and after the single triangle intersection.
+    * </p>
+    */
+   @Test
+   void testCalcIntersectionsWithMaxDistance() {
+      // Ray from (0.5,0.5,5) direction (0,0,-1): hits triangle at (0.5,0.5,1), distance=4
+      Ray ray = new Ray(new Point(0.5, 0.5, 5), new Vector(0, 0, -1));
+
+      // Q before intersection – 0 results
+      assertNull(TRI.calcIntersections(ray, 3), ERR);
+
+      // Q past intersection – 1 result
+      var result = TRI.calcIntersections(ray, 5);
+      assertNotNull(result, ERR);
+      assertEquals(1, result.size(), ERR);
    }
 
    /**

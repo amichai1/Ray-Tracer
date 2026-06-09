@@ -9,6 +9,7 @@ import primitives.Ray;
 import primitives.Vector;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -141,6 +142,26 @@ class PlaneTests {
 
         // BV07: Ray starts at the plane's reference point Q – t = 0, no intersection
         assertNull(PLANE.findIntersections(new Ray(new Point(1, 0, 0), new Vector(1, 1, 0))), ERR);
+    }
+
+    /**
+     * Test method for {@link geometries.api.Intersectable#calcIntersections(Ray, double)}.
+     * <p>
+     * Two cases: max-distance cutoff before and after the single plane intersection.
+     * </p>
+     */
+    @Test
+    void testCalcIntersectionsWithMaxDistance() {
+        // Ray from (1,1,0) direction (0,-1,0): hits y=0 plane at (1,0,0), distance=1
+        Ray ray = new Ray(new Point(1, 1, 0), new Vector(0, -1, 0));
+
+        // Q before intersection – 0 results
+        assertNull(PLANE.calcIntersections(ray, 0.5), ERR);
+
+        // Q past intersection – 1 result
+        var result = PLANE.calcIntersections(ray, 2);
+        assertNotNull(result, ERR);
+        assertEquals(1, result.size(), ERR);
     }
 
     /**
