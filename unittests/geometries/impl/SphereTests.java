@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import geometries.api.Intersectable;
+
 /**
  * Unit tests for class {@link Sphere}.
  * Tests follow the methodology of Equivalence Partitions (EP) and Boundary Values (BVA).
@@ -124,6 +126,50 @@ class SphereTests {
         var resultBV42 = SPHERE.findIntersections(new Ray(new Point(1, 0.5, 0), new Vector(1, 0, 0)));
         assertNotNull(resultBV42, ERR);
         assertEquals(1, resultBV42.size(), ERR);
+    }
+
+    /**
+     * Test method for {@link geometries.api.Intersectable#calcIntersections(Ray, double)}.
+     * <p>
+     * Six cases matching the P1–P6 / Q1–Q6 diagram from the stage-8 instructions:
+     * three rays from outside the sphere (Q before first hit, between hits, after
+     * both hits), two rays from inside the sphere (Q before exit, Q past exit),
+     * and one ray that starts past the sphere.
+     * </p>
+     */
+    @Test
+    void testCalcIntersectionsWithMaxDistance() {
+        // Ray from outside: (-1,0,0) direction (1,0,0)
+        // hits sphere at (0,0,0) distance=1 and (2,0,0) distance=3
+        Ray outsideRay = new Ray(new Point(-1, 0, 0), new Vector(1, 0, 0));
+
+        // ray1: Q1 before first intersection – 0 results
+        assertNull(SPHERE.calcIntersections(outsideRay, 0.5), ERR);
+
+        // ray2: Q2 between the two intersections – 1 result
+        var result2 = SPHERE.calcIntersections(outsideRay, 1.5);
+        assertNotNull(result2, ERR);
+        assertEquals(1, result2.size(), ERR);
+
+        // ray3: Q3 past both intersections – 2 results
+        var result3 = SPHERE.calcIntersections(outsideRay, 4);
+        assertNotNull(result3, ERR);
+        assertEquals(2, result3.size(), ERR);
+
+        // Ray from inside: (1,0.5,0) direction (0,-1,0)
+        // only forward exit at (1,-1,0) distance=1.5
+        Ray insideRay = new Ray(new Point(1, 0.5, 0), new Vector(0, -1, 0));
+
+        // ray4: Q4 before exit – 0 results
+        assertNull(SPHERE.calcIntersections(insideRay, 1), ERR);
+
+        // ray5: Q5 past exit – 1 result
+        var result5 = SPHERE.calcIntersections(insideRay, 2);
+        assertNotNull(result5, ERR);
+        assertEquals(1, result5.size(), ERR);
+
+        // ray6: ray starts past the sphere, going further away – 0 results
+        assertNull(SPHERE.calcIntersections(new Ray(new Point(3, 0, 0), new Vector(1, 0, 0)), 4), ERR);
     }
 
     /**

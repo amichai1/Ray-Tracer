@@ -60,7 +60,7 @@ final class SimpleRayTracer extends RayTracerBase {
     @Override
     Color traceRay(Ray ray) {
         Intersection closest = findClosestIntersection(ray);
-        if(closest == null){
+        if (closest == null) {
             return _scene.background;
         }
         return calcColor(closest, ray.direction());
@@ -95,10 +95,10 @@ final class SimpleRayTracer extends RayTracerBase {
      */
     private Color calcColor(Intersection intersection, int level, Double3 k) {
         Color color = calcLocalEffects(intersection, k);
-        if(level == 1){
+        if (level == 1) {
             return color;
         }
-        Color globalEffect =calcGlobalEffects(intersection, level, k);
+        Color globalEffect = calcGlobalEffects(intersection, level, k);
         return color.add(globalEffect);
     }
 
@@ -146,12 +146,12 @@ final class SimpleRayTracer extends RayTracerBase {
         Vector r = intersection.l.subtract(
                 intersection.normal.scale(2 * intersection.lNormal));
         double minusVR = alignZero(-intersection.v.dotProduct(r));
-        if (minusVR <= 0){
+        if (minusVR <= 0) {
             return Double3.ZERO;
         }
         var materialShininess = intersection.material.nShininess;
-        var ksOfMaterial =intersection.material.kS;
-        return ksOfMaterial.scale(Math.pow(minusVR,materialShininess ));
+        var ksOfMaterial = intersection.material.kS;
+        return ksOfMaterial.scale(Math.pow(minusVR, materialShininess));
     }
 
     /**
