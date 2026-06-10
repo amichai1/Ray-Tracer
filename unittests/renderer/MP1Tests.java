@@ -131,7 +131,7 @@ class MP1Tests {
    /** Renders the AA scene without anti-aliasing (single ray per pixel). */
    @Test
    void antiAliasingOff() {
-      long t0 = System.currentTimeMillis();
+      long startTime = System.currentTimeMillis();
       Camera.getBuilder()
          .setLocation(new Point(0, 0, 400))
          .setDirection(new Point(0, 0, -200), Vector.AXIS_Y)
@@ -144,13 +144,13 @@ class MP1Tests {
          .build()
          .renderImage()
          .writeToImage("aa_off");
-      System.out.printf("AA off  – render time: %d ms%n", System.currentTimeMillis() - t0);
+      System.out.printf("AA off  – render time: %d ms%n", System.currentTimeMillis() - startTime);
    }
 
    /** Renders the AA scene with anti-aliasing enabled (9×9 = 81 rays per pixel). */
    @Test
    void antiAliasingOn() {
-      long t0 = System.currentTimeMillis();
+      long startTime = System.currentTimeMillis();
       Camera.getBuilder()
          .setLocation(new Point(0, 0, 400))
          .setDirection(new Point(0, 0, -200), Vector.AXIS_Y)
@@ -164,7 +164,7 @@ class MP1Tests {
          .build()
          .renderImage()
          .writeToImage("aa_on");
-      System.out.printf("AA on   – render time: %d ms%n", System.currentTimeMillis() - t0);
+      System.out.printf("AA on   – render time: %d ms%n", System.currentTimeMillis() - startTime);
    }
 
    // ═══════════════════════════════════════════════════════════════════════
@@ -296,7 +296,7 @@ class MP1Tests {
     */
    @Test
    void depthOfFieldOff() {
-      long t0 = System.currentTimeMillis();
+      long startTime = System.currentTimeMillis();
       Camera.getBuilder()
          .setLocation(new Point(0, 0, 400))
          .setDirection(new Point(0, 0, -100), Vector.AXIS_Y)
@@ -308,7 +308,7 @@ class MP1Tests {
          .build()
          .renderImage()
          .writeToImage("dof_off");
-      System.out.printf("DOF off – render time: %d ms%n", System.currentTimeMillis() - t0);
+      System.out.printf("DOF off – render time: %d ms%n", System.currentTimeMillis() - startTime);
    }
 
    /**
@@ -322,7 +322,7 @@ class MP1Tests {
     */
    @Test
    void depthOfFieldOn() {
-      long t0 = System.currentTimeMillis();
+      long startTime = System.currentTimeMillis();
       Camera.getBuilder()
          .setLocation(new Point(0, 0, 400))
          .setDirection(new Point(0, 0, -100), Vector.AXIS_Y)
@@ -337,6 +337,6 @@ class MP1Tests {
          .build()
          .renderImage()
          .writeToImage("dof_on");
-      System.out.printf("DOF on  – render time: %d ms%n", System.currentTimeMillis() - t0);
+      System.out.printf("DOF on  – render time: %d ms%n", System.currentTimeMillis() - startTime);
    }
 }

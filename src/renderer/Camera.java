@@ -166,7 +166,8 @@ public class Camera implements Cloneable {
      * @return the ray from the camera origin through the pixel centre
      */
     public Ray constructRay(int xIndex, int yIndex) {
-        return new Ray(_p0, getPixelCenter(xIndex, yIndex).subtract(_p0));
+        Vector direction = getPixelCenter(xIndex, yIndex).subtract(_p0);
+        return new Ray(_p0, direction);
     }
 
     /**
@@ -178,13 +179,13 @@ public class Camera implements Cloneable {
      * @return the 3-D centre of that pixel on the view plane
      */
     private Point getPixelCenter(int xIndex, int yIndex) {
-        double xJ = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
-        double yI = -(yIndex - (_nY - 1) / 2.0) * _pixelHeight;
+        double xOffset = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
+        double yOffset = -(yIndex - (_nY - 1) / 2.0) * _pixelHeight;
 
-        Point p = _vpCenter;
-        if (!isZero(xJ)) p = p.add(_vRight.scale(xJ));
-        if (!isZero(yI)) p = p.add(_vUp.scale(yI));
-        return p;
+        Point pixelCenter = _vpCenter;
+        if (!isZero(xOffset)) pixelCenter = pixelCenter.add(_vRight.scale(xOffset));
+        if (!isZero(yOffset)) pixelCenter = pixelCenter.add(_vUp.scale(yOffset));
+        return pixelCenter;
     }
 
     /**
@@ -244,7 +245,7 @@ public class Camera implements Cloneable {
                 .generateSamplePoints();
 
         return samples.stream()
-                .map(p -> new Ray(_p0, p.subtract(_p0)))
+                .map(samplePoint -> new Ray(_p0, samplePoint.subtract(_p0)))
                 .toList();
     }
 
@@ -270,7 +271,7 @@ public class Camera implements Cloneable {
                 .generateSamplePoints();
 
         return aperturePoints.stream()
-                .map(p -> new Ray(p, focalPoint.subtract(p)))
+                .map(aperturePoint -> new Ray(aperturePoint, focalPoint.subtract(aperturePoint)))
                 .toList();
     }
 
@@ -286,9 +287,9 @@ public class Camera implements Cloneable {
      */
     public Camera renderImage() {
         if (_numThreads == 0) {
-            for (int i = 0; i < _nY; i++)
-                for (int j = 0; j < _nX; j++)
-                    castRay(j, i);
+            for (int row = 0; row < _nY; row++)
+                for (int col = 0; col < _nX; col++)
+                    castRay(col, row);
             return this;
         }
 
@@ -323,10 +324,10 @@ public class Camera implements Cloneable {
      * @return this camera (for method chaining)
      */
     public Camera printGrid(int interval, Color color) {
-        for (int i = 0; i < _nY; i++)
-            for (int j = 0; j < _nX; j++)
-                if (i % interval == 0 || j % interval == 0)
-                    _imageWriter.writePixel(j, i, color);
+        for (int row = 0; row < _nY; row++)
+            for (int col = 0; col < _nX; col++)
+                if (row % interval == 0 || col % interval == 0)
+                    _imageWriter.writePixel(col, row, color);
         return this;
     }
 
