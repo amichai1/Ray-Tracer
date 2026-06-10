@@ -107,7 +107,7 @@ class MP1Tests {
 
       // ── cylinder ────────────────────────────────────────────────────────
       scene.geometries.add(
-         new Cylinder(new Ray(new Point(0, -80, -160), new Vector(0, 1, 0)), 18, 120)
+         new Cylinder(18, new Ray(new Point(0, -80, -160), new Vector(0, 1, 0)), 120)
             .setEmission(new Color(60, 60, 60))
             .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100))
       );
@@ -269,7 +269,7 @@ class MP1Tests {
 
       // ── cylinder at focal plane ──────────────────────────────────────────
       scene.geometries.add(
-         new Cylinder(new Ray(new Point(100, -90, -100), new Vector(0, 1, 0)), 20, 110)
+         new Cylinder(20, new Ray(new Point(100, -90, -100), new Vector(0, 1, 0)), 110)
             .setEmission(new Color(80, 80, 80))
             .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100))
       );
