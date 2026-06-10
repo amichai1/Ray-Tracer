@@ -1,5 +1,6 @@
 package renderer;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import primitives.Color;
@@ -95,6 +96,49 @@ public class Camera implements Cloneable {
      */
     private ImageWriter _imageWriter;
 
+    // ── anti-aliasing ─────────────────────────────────────────────────────────
+
+    /**
+     * Number of samples per axis for anti-aliasing super-sampling.
+     * Total rays per pixel = {@code _aaNumSamples * _aaNumSamples}.
+     * Value of 1 disables anti-aliasing (single centre ray, default behaviour).
+     */
+    private int _aaNumSamples = 1;
+
+    // ── depth of field ────────────────────────────────────────────────────────
+
+    /**
+     * Distance from the camera origin to the focal plane.
+     * A value of 0 disables depth-of-field (default behaviour).
+     */
+    private double _focalLength = 0;
+
+    /**
+     * Half-size of the aperture disc used for depth-of-field sampling.
+     * Larger values produce stronger blur for out-of-focus objects.
+     */
+    private double _apertureSize = 0;
+
+    /**
+     * Number of samples per axis for aperture super-sampling.
+     * Total rays per pixel = {@code _dofNumSamples * _dofNumSamples}.
+     */
+    private int _dofNumSamples = 1;
+
+    // ── multi-threading ───────────────────────────────────────────────────────
+
+    /**
+     * Number of worker threads to use during rendering.
+     * A value of 0 disables multi-threading (default behaviour).
+     */
+    private int _numThreads = 0;
+
+    /**
+     * Progress-print interval in seconds passed to {@link PixelManager}.
+     * A value of 0 disables progress printing.
+     */
+    private double _printInterval = 0;
+
     /**
      * Private default constructor.
      * <p>
@@ -114,51 +158,159 @@ public class Camera implements Cloneable {
     }
 
     /**
-     * Constructs a ray through the center of pixel {@code [xIndex, yIndex]}
+     * Constructs a ray through the centre of pixel {@code (xIndex, yIndex)}
      * on the view plane.
-     * <p>
-     * {@code xIndex} is the column index (horizontal, along {@code _vRight})
-     * and {@code yIndex} is the row index (vertical, along {@code _vUp}).
-     * </p>
      *
      * @param xIndex column index of the pixel (0-based, left to right)
-     * @param yIndex row index of the pixel (0-based, top to bottom)
-     * @return the ray from the camera location through the pixel center
+     * @param yIndex row    index of the pixel (0-based, top  to bottom)
+     * @return the ray from the camera origin through the pixel centre
      */
     public Ray constructRay(int xIndex, int yIndex) {
-        double xJ = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
-        double yI = -(yIndex - (_nY - 1) / 2.0) * _pixelHeight;
-
-        Point pIJ = _vpCenter;
-        if (!isZero(xJ)) pIJ = pIJ.add(_vRight.scale(xJ));
-        if (!isZero(yI)) pIJ = pIJ.add(_vUp.scale(yI));
-
-        return new Ray(_p0, pIJ.subtract(_p0));
+        return new Ray(_p0, getPixelCenter(xIndex, yIndex).subtract(_p0));
     }
 
     /**
-     * Casts a ray through pixel {@code (xIndex, yIndex)}, traces it, and writes
-     * the resulting color to the image buffer.
+     * Returns the world-space centre point of pixel {@code (xIndex, yIndex)}
+     * on the view plane.
+     *
+     * @param xIndex column index (0-based)
+     * @param yIndex row    index (0-based)
+     * @return the 3-D centre of that pixel on the view plane
+     */
+    private Point getPixelCenter(int xIndex, int yIndex) {
+        double xJ = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
+        double yI = -(yIndex - (_nY - 1) / 2.0) * _pixelHeight;
+
+        Point p = _vpCenter;
+        if (!isZero(xJ)) p = p.add(_vRight.scale(xJ));
+        if (!isZero(yI)) p = p.add(_vUp.scale(yI));
+        return p;
+    }
+
+    /**
+     * Traces all rays for pixel {@code (xIndex, yIndex)} and writes the
+     * resulting colour to the image buffer.
+     *
+     * <p>When a super-sampling improvement is active this method traces a beam
+     * of rays and averages their colours.  Otherwise it falls back to a single
+     * centre ray, preserving the original single-ray behaviour.</p>
      *
      * @param xIndex the pixel column index (0-based)
-     * @param yIndex the pixel row index (0-based)
+     * @param yIndex the pixel row    index (0-based)
      */
     private void castRay(int xIndex, int yIndex) {
-        Ray ray = constructRay(xIndex, yIndex);
-        Color color = _rayTracer.traceRay(ray);
+        Color color = (_aaNumSamples > 1 || _focalLength > 0)
+                ? castBeam(xIndex, yIndex)
+                : _rayTracer.traceRay(constructRay(xIndex, yIndex));
         _imageWriter.writePixel(xIndex, yIndex, color);
     }
 
     /**
-     * Renders the scene by casting a ray through every pixel and writing the
-     * resulting color to the image buffer.
+     * Builds and traces a beam of rays for the given pixel, then returns the
+     * averaged colour.
+     *
+     * <p>Depth-of-field takes priority when both improvements are configured.</p>
+     *
+     * @param xIndex pixel column index
+     * @param yIndex pixel row    index
+     * @return the averaged colour of all rays in the beam
+     */
+    private Color castBeam(int xIndex, int yIndex) {
+        List<Ray> beam = _focalLength > 0
+                ? constructDofBeam(xIndex, yIndex)
+                : constructAaBeam(xIndex, yIndex);
+
+        Color sum = Color.BLACK;
+        for (Ray ray : beam)
+            sum = sum.add(_rayTracer.traceRay(ray));
+        return sum.reduce(beam.size());
+    }
+
+    /**
+     * Constructs a beam of rays for anti-aliasing by spreading samples across
+     * the pixel area on the view plane.
+     *
+     * <p>All rays originate from the camera location; only their directions
+     * (through different sub-pixel points) differ.</p>
+     *
+     * @param xIndex pixel column index
+     * @param yIndex pixel row    index
+     * @return list of rays covering the pixel area
+     */
+    private List<Ray> constructAaBeam(int xIndex, int yIndex) {
+        List<Point> samples = new Blackboard(getPixelCenter(xIndex, yIndex), _vRight, _vUp)
+                .setSize(_pixelWidth / 2.0)
+                .setNumSamples(_aaNumSamples)
+                .generateSamplePoints();
+
+        return samples.stream()
+                .map(p -> new Ray(_p0, p.subtract(_p0)))
+                .toList();
+    }
+
+    /**
+     * Constructs a beam of rays for depth-of-field by spreading samples across
+     * the aperture and directing each ray through the focal point.
+     *
+     * <p>The focal point lies on the central pixel ray at distance
+     * {@code _focalLength}.  Objects at that distance appear sharp; objects
+     * nearer or farther appear blurred because their images on the film plane
+     * are the average of slightly different angles.</p>
+     *
+     * @param xIndex pixel column index
+     * @param yIndex pixel row    index
+     * @return list of rays from aperture samples through the focal point
+     */
+    private List<Ray> constructDofBeam(int xIndex, int yIndex) {
+        Point focalPoint = constructRay(xIndex, yIndex).getPoint(_focalLength);
+
+        List<Point> aperturePoints = new Blackboard(_p0, _vRight, _vUp)
+                .setSize(_apertureSize)
+                .setNumSamples(_dofNumSamples)
+                .generateSamplePoints();
+
+        return aperturePoints.stream()
+                .map(p -> new Ray(p, focalPoint.subtract(p)))
+                .toList();
+    }
+
+    /**
+     * Renders the scene by casting rays through every pixel and writing the
+     * resulting colours to the image buffer.
+     *
+     * <p>When {@code _numThreads > 0} the work is distributed across that many
+     * worker threads using {@link PixelManager} for thread-safe pixel
+     * allocation.  Otherwise a simple sequential double loop is used.</p>
      *
      * @return this camera (for method chaining)
      */
     public Camera renderImage() {
-        for (int i = 0; i < _nY; i++)
-            for (int j = 0; j < _nX; j++)
-                castRay(j, i);
+        if (_numThreads == 0) {
+            for (int i = 0; i < _nY; i++)
+                for (int j = 0; j < _nX; j++)
+                    castRay(j, i);
+            return this;
+        }
+
+        var pixelManager = new PixelManager(_nY, _nX, _printInterval);
+        var threads = new Thread[_numThreads];
+        for (int t = 0; t < _numThreads; t++) {
+            threads[t] = new Thread(() -> {
+                PixelManager.Pixel pixel;
+                while ((pixel = pixelManager.nextPixel()) != null) {
+                    castRay(pixel.col(), pixel.row());
+                    pixelManager.pixelDone();
+                }
+            });
+            threads[t].start();
+        }
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         return this;
     }
 
@@ -306,6 +458,54 @@ public class Camera implements Cloneable {
         public Builder setResolution(int nX, int nY) {
             _camera._nX = nX;
             _camera._nY = nY;
+            return this;
+        }
+
+        /**
+         * Enables anti-aliasing super-sampling.
+         *
+         * <p>Each pixel is sampled on an {@code n × n} grid; the resulting
+         * colours are averaged.  Pass {@code 1} to disable (default).</p>
+         *
+         * @param n number of samples per axis (total = n²); must be ≥ 1
+         * @return this builder
+         */
+        public Builder setAntiAliasing(int n) {
+            _camera._aaNumSamples = n;
+            return this;
+        }
+
+        /**
+         * Enables depth-of-field by specifying the focal distance and aperture.
+         *
+         * <p>Objects at {@code focalLength} from the camera appear sharp; objects
+         * at other distances appear blurred.  Pass {@code focalLength = 0} to
+         * disable (default).</p>
+         *
+         * @param focalLength  distance from the camera to the focal plane; 0 = disabled
+         * @param apertureSize half-size of the aperture disc; controls blur strength
+         * @param n            number of aperture samples per axis (total = n²)
+         * @return this builder
+         */
+        public Builder setDepthOfField(double focalLength, double apertureSize, int n) {
+            _camera._focalLength   = focalLength;
+            _camera._apertureSize  = apertureSize;
+            _camera._dofNumSamples = n;
+            return this;
+        }
+
+        /**
+         * Enables multi-threaded rendering.
+         *
+         * <p>Pass {@code numThreads = 0} to use the single-threaded path (default).</p>
+         *
+         * @param numThreads    number of worker threads; 0 = single-threaded
+         * @param printInterval progress-print interval in seconds; 0 = silent
+         * @return this builder
+         */
+        public Builder setMultiThreading(int numThreads, double printInterval) {
+            _camera._numThreads    = numThreads;
+            _camera._printInterval = printInterval;
             return this;
         }
 
