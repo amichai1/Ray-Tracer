@@ -75,18 +75,18 @@ class PixelManager {
 
    /** Updates the pixel count and prints progress percentage when the interval is reached. */
    void pixelDone() {
-      boolean flag       = false;
-      int     percentage = 0;
+      boolean shouldPrint = false;
+      int     percentage  = 0;
       synchronized (mutexPixels) {
          ++pixels;
          if (print) {
             percentage = (int) (1000L * pixels / totalPixels);
             if (percentage - lastPrinted >= printInterval) {
                lastPrinted = percentage;
-               flag        = true;
+               shouldPrint = true;
             }
          }
-         if (flag) System.out.printf(PRINT_FORMAT, percentage / 10d);
+         if (shouldPrint) System.out.printf(PRINT_FORMAT, percentage / 10d);
       }
    }
 }

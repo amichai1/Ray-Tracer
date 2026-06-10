@@ -137,18 +137,18 @@ class Blackboard {
 
       for (int row = 0; row < numSamples; row++) {
          for (int col = 0; col < numSamples; col++) {
-            double dx = start + col * cellSize;
-            double dy = start + row * cellSize;
+            double offsetX = start + col * cellSize;
+            double offsetY = start + row * cellSize;
 
             if (pattern == SamplingPattern.JITTERED) {
-               dx += (Math.random() - 0.5) * cellSize;
-               dy += (Math.random() - 0.5) * cellSize;
+               offsetX += (Math.random() - 0.5) * cellSize;
+               offsetY += (Math.random() - 0.5) * cellSize;
             }
 
-            Point p = center;
-            if (!isZero(dx)) p = p.add(vRight.scale(dx));
-            if (!isZero(dy)) p = p.add(vUp.scale(dy));
-            points.add(p);
+            Point samplePoint = center;
+            if (!isZero(offsetX)) samplePoint = samplePoint.add(vRight.scale(offsetX));
+            if (!isZero(offsetY)) samplePoint = samplePoint.add(vUp.scale(offsetY));
+            points.add(samplePoint);
          }
       }
       return points;
