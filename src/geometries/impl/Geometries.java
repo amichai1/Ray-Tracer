@@ -1,8 +1,10 @@
 package geometries.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
+import geometries.api.AABB;
 import geometries.api.Intersectable;
 import primitives.Ray;
 
@@ -48,6 +50,99 @@ public class Geometries extends Intersectable {
      */
     public void add(Intersectable... geometries) {
         _geometries.addAll(List.of(geometries));
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        AABB result = null;
+        for (Intersectable g : _geometries) {
+            AABB box = g.getBoundingBox();
+            if (box == null) return null; // unbounded child → whole composite is unbounded
+            result = (result == null) ? box : AABB.merge(result, box);
+        }
+        return result;
+    }
+
+    /**
+     * Returns a flat {@code Geometries} containing every leaf geometry from
+     * this composite tree (recursively flattens nested {@code Geometries}).
+     *
+     * @return a flat composite with no nested {@code Geometries}
+     */
+    public Geometries flatten() {
+        Geometries flat = new Geometries();
+        for (Intersectable g : _geometries) {
+            if (g instanceof Geometries inner)
+                flat._geometries.addAll(inner.flatten()._geometries);
+            else
+                flat._geometries.add(g);
+        }
+        return flat;
+    }
+
+    /**
+     * Builds a BVH hierarchy over this composite using median-split along the
+     * longest AABB axis.
+     * <p>
+     * Call {@link #flatten()} first to remove any prior nesting, then call
+     * this method to build an optimal tree.
+     * Geometries without a bounding box (e.g. infinite planes) are kept in a
+     * separate list and not partitioned.
+     * </p>
+     *
+     * @return the root of the BVH hierarchy (a possibly nested {@code Geometries})
+     */
+    public Geometries buildBVH() {
+        return buildBVHRecursive(_geometries);
+    }
+
+    /**
+     * Recursive BVH construction using median split.
+     *
+     * @param  items list of intersectable objects to partition
+     * @return a {@code Geometries} node (leaf or internal)
+     */
+    private static Geometries buildBVHRecursive(List<Intersectable> items) {
+        if (items.size() <= 2) {
+            Geometries leaf = new Geometries();
+            leaf._geometries.addAll(items);
+            return leaf;
+        }
+
+        // Separate objects with no bounding box (infinite planes, etc.)
+        List<Intersectable> bounded   = new ArrayList<>();
+        List<Intersectable> unbounded = new ArrayList<>();
+        for (Intersectable g : items) {
+            if (g.getBoundingBox() == null) unbounded.add(g);
+            else                            bounded.add(g);
+        }
+
+        if (bounded.size() <= 2) {
+            Geometries leaf = new Geometries();
+            leaf._geometries.addAll(items);
+            return leaf;
+        }
+
+        // Compute enclosing AABB of all bounded objects
+        AABB enclosing = null;
+        for (Intersectable g : bounded) {
+            AABB b = g.getBoundingBox();
+            enclosing = (enclosing == null) ? b : AABB.merge(enclosing, b);
+        }
+
+        // Sort along the longest axis and split at median
+        int axis = enclosing.longestAxis();
+        bounded.sort(Comparator.comparingDouble(g -> g.getBoundingBox().centroid(axis)));
+        int mid = bounded.size() / 2;
+
+        Geometries left  = buildBVHRecursive(bounded.subList(0, mid));
+        Geometries right = buildBVHRecursive(bounded.subList(mid, bounded.size()));
+
+        Geometries node = new Geometries();
+        node._geometries.add(left);
+        node._geometries.add(right);
+        node._geometries.addAll(unbounded);
+        return node;
     }
 
     @Override

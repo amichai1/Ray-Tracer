@@ -2,6 +2,7 @@ package geometries.impl;
 
 import java.util.List;
 
+import geometries.api.AABB;
 import geometries.api.Geometry;
 import primitives.Point;
 import primitives.Ray;
@@ -61,6 +62,11 @@ public final class Plane extends Geometry {
     public Plane(Point point, Vector normal) {
         _point = point;
         _normal = normal.normalize();
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        return null; // infinite extent
     }
 
     @Override

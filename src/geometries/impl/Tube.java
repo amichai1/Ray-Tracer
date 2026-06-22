@@ -2,6 +2,7 @@ package geometries.impl;
 
 import java.util.List;
 
+import geometries.api.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
@@ -33,6 +34,11 @@ public class Tube extends RadialGeometry {
     public Tube(double radius, Ray axis) {
         super(radius);
         _axis = axis;
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        return null; // infinite extent
     }
 
     @Override

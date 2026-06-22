@@ -16,10 +16,36 @@ import static primitives.Util.alignZero;
  * extend this class and provide an implementation of
  * {@link #findIntersections(Ray)}.
  * </p>
+ * <p>
+ * Supports an optional Conservative Bounding Region (CBR) test via
+ * {@link AABB}: when {@link #s_useCBR} is enabled, a fast axis-aligned
+ * bounding-box check is performed before the exact intersection computation.
+ * </p>
  *
  * @author Amichai Mukades
  */
 public abstract class Intersectable {
+
+    /**
+     * Global flag: when {@code true}, the CBR (AABB) early-rejection test is
+     * applied before every exact intersection computation.
+     * Disabled by default; toggle from tests via {@link #setCBR(boolean)}.
+     */
+    private static boolean s_useCBR = false;
+
+    /**
+     * Enables or disables the Conservative Bounding Region acceleration.
+     *
+     * @param  enabled {@code true} to activate CBR, {@code false} to disable
+     */
+    public static void setCBR(boolean enabled) {
+        s_useCBR = enabled;
+    }
+
+    /**
+     * Cached bounding box (lazy: computed on first {@link #getBoundingBox()} call).
+     */
+    private AABB _box = null;
 
     /**
      * A hit record pairing a surface point with the geometry it belongs to.
@@ -99,6 +125,32 @@ public abstract class Intersectable {
     }
 
     /**
+     * Returns the axis-aligned bounding box for this object (NVI entry point).
+     * <p>
+     * The result is computed lazily on the first call and cached.
+     * Returns {@code null} for unbounded objects (e.g. infinite planes).
+     * </p>
+     *
+     * @return the {@link AABB} enclosing this object, or {@code null}
+     */
+    public final AABB getBoundingBox() {
+        if (_box == null)
+            _box = calcBoundingBox();
+        return _box;
+    }
+
+    /**
+     * Computes and returns the axis-aligned bounding box for this object.
+     * <p>
+     * Subclasses must override this to supply an exact bounding box.
+     * Return {@code null} for objects with infinite extent (e.g. {@code Plane}).
+     * </p>
+     *
+     * @return the tight {@link AABB}, or {@code null} if unbounded
+     */
+    protected abstract AABB calcBoundingBox();
+
+    /**
      * Finds all intersection points between this object and the given ray.
      * <p>
      * Returns only intersections in the forward direction of the ray
@@ -120,17 +172,30 @@ public abstract class Intersectable {
     /**
      * Computes all intersections between this object and the given ray, each
      * paired with the intersected geometry.
+     * <p>
+     * When CBR is enabled, a fast AABB test is performed first; a definite
+     * miss returns {@code null} immediately.
+     * </p>
      *
      * @param ray the ray to intersect with
      * @return a list of {@link Intersection} records, or {@code null} if
      * there are none
      */
     public final List<Intersection> calcIntersections(Ray ray) {
+        if (s_useCBR) {
+            AABB box = getBoundingBox();
+            if (box != null && box.misses(ray))
+                return null;
+        }
         return calcIntersectionsHelper(ray, Double.POSITIVE_INFINITY);
     }
 
     /**
      * Computes all intersections with the given ray up to {@code maxDistance}.
+     * <p>
+     * When CBR is enabled, a fast AABB test is performed first; a definite
+     * miss returns {@code null} immediately.
+     * </p>
      *
      * @param ray         the ray to intersect with
      * @param maxDistance the maximum allowed distance from the ray origin
@@ -138,6 +203,11 @@ public abstract class Intersectable {
      * or {@code null} if there are none
      */
     public final List<Intersection> calcIntersections(Ray ray, double maxDistance) {
+        if (s_useCBR) {
+            AABB box = getBoundingBox();
+            if (box != null && box.misses(ray))
+                return null;
+        }
         return calcIntersectionsHelper(ray, maxDistance);
     }
 

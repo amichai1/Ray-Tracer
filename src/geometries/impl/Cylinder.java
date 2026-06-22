@@ -1,5 +1,6 @@
 package geometries.impl;
 
+import geometries.api.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Util;
@@ -33,6 +34,17 @@ public final class Cylinder extends Tube {
     public Cylinder(double radius, Ray axis, double height) {
         super(radius, axis);
         _height = height;
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        Point p0 = _axis.origin();
+        Point p1 = _axis.getPoint(_height);
+        double x0 = p0.getX(), y0 = p0.getY(), z0 = p0.getZ();
+        double x1 = p1.getX(), y1 = p1.getY(), z1 = p1.getZ();
+        return new AABB(
+                Math.min(x0, x1) - _radius, Math.min(y0, y1) - _radius, Math.min(z0, z1) - _radius,
+                Math.max(x0, x1) + _radius, Math.max(y0, y1) + _radius, Math.max(z0, z1) + _radius);
     }
 
     @Override

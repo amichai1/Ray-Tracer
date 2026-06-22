@@ -1,8 +1,11 @@
 package renderer;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.MissingResourceException;
+import java.util.stream.IntStream;
 
+import geometries.api.Intersectable;
 import primitives.Color;
 import primitives.Point;
 import primitives.Ray;
@@ -128,16 +131,33 @@ public class Camera implements Cloneable {
     // ── multi-threading ───────────────────────────────────────────────────────
 
     /**
-     * Number of worker threads to use during rendering.
-     * A value of 0 disables multi-threading (default behaviour).
+     * Amount of threads to use for rendering image by the camera.
+     * <ul>
+     *   <li>-2 – number of threads = logical processors minus {@link #SPARE_THREADS}</li>
+     *   <li>-1 – parallel stream (implicit multi-threading)</li>
+     *   <li> 0 – no multi-threading (default)</li>
+     *   <li>1+ – literal thread count</li>
+     * </ul>
      */
-    private int _numThreads = 0;
+    private int _threadsCount = 0;
 
     /**
-     * Progress-print interval in seconds passed to {@link PixelManager}.
-     * A value of 0 disables progress printing.
+     * Amount of threads to spare for Java VM threads.
+     * Spare threads if trying to use all the cores.
+     */
+    private static final int SPARE_THREADS = 2;
+
+    /**
+     * Debug print interval in % (for progress percentage).
+     * A value of 0 disables progress output.
      */
     private double _printInterval = 0;
+
+    /**
+     * Pixel manager for supporting multi-threading and debug print of
+     * progress percentage in the console window/tab.
+     */
+    private PixelManager _pixelManager;
 
     /**
      * Private default constructor.
@@ -146,6 +166,11 @@ public class Camera implements Cloneable {
      * </p>
      */
     private Camera() {
+    }
+
+    @Override
+    protected Camera clone() throws CloneNotSupportedException {
+        return (Camera) super.clone();
     }
 
     /**
@@ -204,6 +229,7 @@ public class Camera implements Cloneable {
                 ? castBeam(xIndex, yIndex)
                 : _rayTracer.traceRay(constructRay(xIndex, yIndex));
         _imageWriter.writePixel(xIndex, yIndex, color);
+        _pixelManager.pixelDone();
     }
 
     /**
@@ -279,39 +305,60 @@ public class Camera implements Cloneable {
      * Renders the scene by casting rays through every pixel and writing the
      * resulting colours to the image buffer.
      *
-     * <p>When {@code _numThreads > 0} the work is distributed across that many
-     * worker threads using {@link PixelManager} for thread-safe pixel
-     * allocation.  Otherwise a simple sequential double loop is used.</p>
+     * <p>Initialises the pixel manager and delegates to the appropriate
+     * rendering strategy based on {@code _threadsCount}.</p>
      *
      * @return this camera (for method chaining)
      */
     public Camera renderImage() {
-        if (_numThreads == 0) {
-            for (int row = 0; row < _nY; row++)
-                for (int col = 0; col < _nX; col++)
-                    castRay(col, row);
-            return this;
-        }
+        _pixelManager = new PixelManager(_nY, _nX, _printInterval);
+        return switch (_threadsCount) {
+            case  0 -> renderImageNoThreads();
+            case -1 -> renderImageStream();
+            default -> renderImageRawThreads();
+        };
+    }
 
-        var pixelManager = new PixelManager(_nY, _nX, _printInterval);
-        var threads = new Thread[_numThreads];
-        for (int t = 0; t < _numThreads; t++) {
-            threads[t] = new Thread(() -> {
+    /**
+     * Renders the image without multi-threading (single main thread).
+     *
+     * @return this camera (for method chaining)
+     */
+    private Camera renderImageNoThreads() {
+        for (int i = 0; i < _nY; ++i)
+            for (int j = 0; j < _nX; ++j)
+                castRay(j, i);
+        return this;
+    }
+
+    /**
+     * Renders the image using parallel stream (implicit multi-threading).
+     *
+     * @return this camera (for method chaining)
+     */
+    private Camera renderImageStream() {
+        IntStream.range(0, _nY).parallel()
+                .forEach(i -> IntStream.range(0, _nX).parallel()
+                        .forEach(j -> castRay(j, i)));
+        return this;
+    }
+
+    /**
+     * Renders the image using raw Java threads.
+     *
+     * @return this camera (for method chaining)
+     */
+    private Camera renderImageRawThreads() {
+        var threads = new LinkedList<Thread>();
+        while (_threadsCount-- > 0)
+            threads.add(new Thread(() -> {
                 PixelManager.Pixel pixel;
-                while ((pixel = pixelManager.nextPixel()) != null) {
+                while ((pixel = _pixelManager.nextPixel()) != null)
                     castRay(pixel.col(), pixel.row());
-                    pixelManager.pixelDone();
-                }
-            });
-            threads[t].start();
-        }
-        for (Thread thread : threads) {
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+            }));
+        for (var thread : threads) thread.start();
+        try { for (var thread : threads) thread.join(); }
+        catch (InterruptedException ignored) {}
         return this;
     }
 
@@ -371,6 +418,12 @@ public class Camera implements Cloneable {
          * General up vector used to derive the orthonormal frame.
          */
         private Vector _vUp = Vector.AXIS_Y;
+
+        /**
+         * The scene that was passed to {@link #setRayTracer}, kept so that
+         * {@link #enableBVH()} can rebuild its geometry tree before rendering.
+         */
+        private Scene _scene = null;
 
         /**
          * Sets the camera location.
@@ -496,17 +549,41 @@ public class Camera implements Cloneable {
         }
 
         /**
-         * Enables multi-threaded rendering.
+         * Sets the multi-threading mode.
+         * <ul>
+         *   <li>-2 – auto: logical processors minus {@code SPARE_THREADS}</li>
+         *   <li>-1 – parallel stream</li>
+         *   <li> 0 – no multi-threading (default)</li>
+         *   <li>1+ – literal thread count</li>
+         * </ul>
          *
-         * <p>Pass {@code numThreads = 0} to use the single-threaded path (default).</p>
-         *
-         * @param numThreads    number of worker threads; 0 = single-threaded
-         * @param printInterval progress-print interval in seconds; 0 = silent
-         * @return this builder
+         * @param  threads number of threads (−2 to Integer.MAX_VALUE)
+         * @return         this builder
+         * @throws IllegalArgumentException if {@code threads} is less than −2
          */
-        public Builder setMultiThreading(int numThreads, double printInterval) {
-            _camera._numThreads    = numThreads;
-            _camera._printInterval = printInterval;
+        public Builder setMultithreading(int threads) {
+            if (threads < -3)
+                throw new IllegalArgumentException("Multithreading parameter must be -2 or higher");
+            if (threads == -2) {
+                int cores = Runtime.getRuntime().availableProcessors() - SPARE_THREADS;
+                _camera._threadsCount = cores <= 2 ? 1 : cores;
+            } else
+                _camera._threadsCount = threads;
+            return this;
+        }
+
+        /**
+         * Sets the debug-print interval for progress output.
+         * A value of 0 disables all output.
+         *
+         * @param  interval printing interval in %; must be ≥ 0
+         * @return          this builder
+         * @throws IllegalArgumentException if {@code interval} is negative
+         */
+        public Builder setDebugPrint(double interval) {
+            if (interval < 0)
+                throw new IllegalArgumentException("interval parameter must be non-negative");
+            _camera._printInterval = interval;
             return this;
         }
 
@@ -519,10 +596,37 @@ public class Camera implements Cloneable {
          * @throws IllegalArgumentException if {@code type} is not supported
          */
         public Builder setRayTracer(Scene scene, RayTracerType type) {
-            _camera._rayTracer = switch (type) {
-                case SIMPLE -> new SimpleRayTracer(scene);
-                default -> throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
-            };
+            _scene = scene;
+            if (type != RayTracerType.SIMPLE)
+                throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
+            _camera._rayTracer = new SimpleRayTracer(scene);
+            return this;
+        }
+
+        /**
+         * Enables Conservative Bounding Region (CBR) acceleration.
+         * <p>
+         * All ray–geometry tests will first check the AABB before
+         * performing the full intersection computation.
+         * </p>
+         *
+         * @return this builder
+         */
+        public Builder enableCBR() {
+            Intersectable.setCBR(true);
+            return this;
+        }
+
+        /**
+         * Enables BVH acceleration by flattening the scene's geometry tree and
+         * rebuilding it as an optimised Bounding Volume Hierarchy, then enables CBR.
+         *
+         * @return this builder
+         */
+        public Builder enableBVH() {
+            if (_scene != null)
+                _scene.setGeometries(_scene.geometries.flatten().buildBVH());
+            Intersectable.setCBR(true);
             return this;
         }
 
