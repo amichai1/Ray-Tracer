@@ -2,6 +2,7 @@ package geometries.impl;
 
 import java.util.List;
 
+import geometries.api.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
@@ -34,6 +35,13 @@ public final class Sphere extends RadialGeometry {
     public Sphere(Point center, double radius) {
         super(radius);
         _center = center;
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        double cx = _center.getX(), cy = _center.getY(), cz = _center.getZ();
+        return new AABB(cx - _radius, cy - _radius, cz - _radius,
+                        cx + _radius, cy + _radius, cz + _radius);
     }
 
     @Override

@@ -168,7 +168,8 @@ class MP1Tests {
                 .setRayTracer(buildAaScene(), RayTracerType.SIMPLE)
                 // 9×9 grid  →  81 rays per pixel
                 .setAntiAliasing(9)
-                .setMultiThreading(4, 1.0)
+                .setMultithreading(-2)
+                .setDebugPrint(1)
                 .build()
                 .renderImage()
                 .writeToImage("aa_on");
@@ -341,7 +342,8 @@ class MP1Tests {
                 // focal length 500 → focal plane at z = 400-500 = -100
                 // aperture half-size 6, 9×9 = 81 aperture samples
                 .setDepthOfField(500, 6, 9)
-                .setMultiThreading(4, 1.0)
+                .setMultithreading(-2)
+                .setDebugPrint(1)
                 .build()
                 .renderImage()
                 .writeToImage("dof_on");

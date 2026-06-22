@@ -2,6 +2,7 @@ package geometries.impl;
 
 import java.util.List;
 
+import geometries.api.AABB;
 import geometries.api.Geometry;
 import primitives.Point;
 import primitives.Ray;
@@ -85,6 +86,19 @@ public class Polygon extends Geometry {
                 throw new IllegalArgumentException(
                         "All vertices must be ordered and the polygon must be convex");
         }
+    }
+
+    @Override
+    protected AABB calcBoundingBox() {
+        double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+        for (Point v : _vertices) {
+            double x = v.getX(), y = v.getY(), z = v.getZ();
+            if (x < minX) minX = x;  if (x > maxX) maxX = x;
+            if (y < minY) minY = y;  if (y > maxY) maxY = y;
+            if (z < minZ) minZ = z;  if (z > maxZ) maxZ = z;
+        }
+        return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     @Override

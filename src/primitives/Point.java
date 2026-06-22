@@ -45,6 +45,27 @@ public class Point {
     }
 
     /**
+     * Returns the X coordinate of this point.
+     *
+     * @return the X coordinate
+     */
+    public final double getX() { return _xyz._d1(); }
+
+    /**
+     * Returns the Y coordinate of this point.
+     *
+     * @return the Y coordinate
+     */
+    public final double getY() { return _xyz._d2(); }
+
+    /**
+     * Returns the Z coordinate of this point.
+     *
+     * @return the Z coordinate
+     */
+    public final double getZ() { return _xyz._d3(); }
+
+    /**
      * Returns the vector from {@code other} to this point.
      *
      * @param other the other point
