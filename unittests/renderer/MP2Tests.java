@@ -37,6 +37,7 @@ class MP2Tests {
     private static final int GRID_ROWS = 25;
     private static final double SPHERE_RADIUS = 8;
     private static final double SPHERE_SPACING = 20;
+    private static final int    AA_SAMPLES     = 3;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Scene builders
@@ -203,13 +204,16 @@ class MP2Tests {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Renders the scene, prints the elapsed time, and resets CBR to off.
+     * Core render helper: builds the camera, renders with AA ({@code AA_SAMPLES²} rays/pixel),
+     * writes the image, prints elapsed time, and resets CBR to off.
      *
-     * @param scene      the scene to render
-     * @param imageName  output file name (without extension)
-     * @param useThreads {@code true} to enable multi-threading (auto mode)
+     * @param  scene      the scene to render
+     * @param  imageName  output file name (without extension)
+     * @param  threadMode threading mode passed to {@link Camera.Builder#setMultithreading}:
+     *                    0 = single-thread, −1 = parallel stream, −2 = auto raw-threads
+     * @return            elapsed render time in milliseconds
      */
-    private void doRender(Scene scene, String imageName, boolean useThreads) {
+    private long doRenderMode(Scene scene, String imageName, int threadMode) {
         long start = System.currentTimeMillis();
         Camera.Builder builder = Camera.getBuilder()
                 .setLocation(new Point(0, 80, 500))
@@ -217,17 +221,32 @@ class MP2Tests {
                 .setVpDistance(500)
                 .setVpSize(400, 400)
                 .setResolution(NX, NY)
+                .setAntiAliasing(AA_SAMPLES)
                 .setRayTracer(scene, RayTracerType.SIMPLE);
 
-        if (useThreads)
-            builder.setMultithreading(-2).setDebugPrint(5);
+        if (threadMode != 0)
+            builder.setMultithreading(threadMode).setDebugPrint(5);
 
         builder.build()
                 .renderImage()
                 .writeToImage(imageName);
 
-        System.out.printf("%-40s %5d ms%n", imageName + ":", System.currentTimeMillis() - start);
+        long elapsed = System.currentTimeMillis() - start;
+        System.out.printf("%-40s %5d ms%n", imageName + ":", elapsed);
         Intersectable.setCBR(false);
+        return elapsed;
+    }
+
+    /**
+     * Renders the scene, prints the elapsed time, and resets CBR to off.
+     *
+     * @param  scene      the scene to render
+     * @param  imageName  output file name (without extension)
+     * @param  useThreads {@code true} to enable auto raw-threads mode (−2)
+     * @return            elapsed render time in milliseconds
+     */
+    private long doRender(Scene scene, String imageName, boolean useThreads) {
+        return doRenderMode(scene, imageName, useThreads ? -2 : 0);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -354,5 +373,64 @@ class MP2Tests {
         scene.setGeometries(scene.geometries.flatten().buildBVH());
         Intersectable.setCBR(true);
         doRender(scene, "mp2_12_cbr_auto_MT", true);
+    }
+
+    // ── Parallel-stream threading (mode −1) ───────────────────────────────────
+
+    /**
+     * No acceleration, flat hierarchy, parallel-stream multi-threading (mode −1).
+     */
+    @Test
+    void mp2_13_noAccel_flat_stream() {
+        doRenderMode(buildFlatScene(), "mp2_13_noAccel_flat_stream", -1);
+    }
+
+    /**
+     * CBR + auto BVH, parallel-stream multi-threading (mode −1).
+     */
+    @Test
+    void mp2_14_cbr_auto_stream() {
+        Scene scene = buildFlatScene();
+        scene.setGeometries(scene.geometries.flatten().buildBVH());
+        Intersectable.setCBR(true);
+        doRenderMode(scene, "mp2_14_cbr_auto_stream", -1);
+    }
+
+    // ── Mandatory 4-configuration benchmark ───────────────────────────────────
+
+    /**
+     * Mandatory 4-configuration benchmark on one fixed scene.
+     * <p>
+     * Runs all four required configurations sequentially and prints speedup
+     * ratios so that the contribution of BVH and multi-threading can be
+     * measured independently.  Mini-Project 1 ({@code AA_SAMPLES}² rays/pixel)
+     * is active in all four runs.
+     * </p>
+     */
+    @Test
+    void mp2_benchmark_4configs() {
+        System.out.println("\n=== Mandatory 4-configuration benchmark (same scene) ===");
+
+        // 1 – acceleration off, threading off
+        long t1 = doRender(buildFlatScene(), "mp2_B1_noAccel_noMT", false);
+
+        // 2 – acceleration off, threading on (raw-threads)
+        long t2 = doRender(buildFlatScene(), "mp2_B2_noAccel_MT",   true);
+
+        // 3 – BVH + CBR on, threading off
+        Scene s3 = buildFlatScene();
+        s3.setGeometries(s3.geometries.flatten().buildBVH());
+        Intersectable.setCBR(true);
+        long t3 = doRender(s3, "mp2_B3_bvh_noMT", false);
+
+        // 4 – BVH + CBR on, threading on (raw-threads)
+        Scene s4 = buildFlatScene();
+        s4.setGeometries(s4.geometries.flatten().buildBVH());
+        Intersectable.setCBR(true);
+        long t4 = doRender(s4, "mp2_B4_bvh_MT", true);
+
+        System.out.printf("%n%-40s %.2fx%n", "Threading speedup (no accel):", (double) t1 / t2);
+        System.out.printf("%-40s %.2fx%n",   "BVH speedup (single thread):",  (double) t1 / t3);
+        System.out.printf("%-40s %.2fx%n",   "Combined speedup (BVH + MT):",  (double) t1 / t4);
     }
 }
