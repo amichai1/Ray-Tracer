@@ -24,7 +24,7 @@ import static primitives.Util.isZero;
  * <p>When {@code _size == 0} or {@code _numSamples == 1} the list contains only
  * the centre point, so the caller degrades gracefully to a single ray.</p>
  */
-class Blackboard {
+final class Blackboard {
 
    // ── sampling-pattern options ─────────────────────────────────────────────
 
@@ -126,8 +126,8 @@ class Blackboard {
    /**
     * Generates and returns the list of 3-D sample points for this target area.
     *
-    * <p>Returns a single-element list containing only {@code center} when
-    * {@code size == 0} or {@code numSamples == 1}, allowing callers to
+    * <p>Returns a single-element list containing only {@code _center} when
+    * {@code _size == 0} or {@code _numSamples == 1}, allowing callers to
     * degrade naturally to a single ray without branching.</p>
     *
     * @return a non-empty list of world-space sample points
