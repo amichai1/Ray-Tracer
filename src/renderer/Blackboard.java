@@ -13,7 +13,7 @@ import static primitives.Util.isZero;
  * area in world space.
  *
  * <p>The target area is defined by a centre point and two orthonormal local
- * axes ({@code vRight} and {@code vUp}).  Sample positions are computed as
+ * axes ({@code _vRight} and {@code _vUp}).  Sample positions are computed as
  * 2-D offsets inside the area and then projected into 3-D by combining those
  * axes.</p>
  *
@@ -21,14 +21,20 @@ import static primitives.Util.isZero;
  * both anti-aliasing (samples spread across a pixel) and depth-of-field
  * (samples spread across the aperture disc).</p>
  *
- * <p>When {@code size == 0} or {@code numSamples == 1} the list contains only
+ * <p>When {@code _size == 0} or {@code _numSamples == 1} the list contains only
  * the centre point, so the caller degrades gracefully to a single ray.</p>
  */
 class Blackboard {
 
    // ── sampling-pattern options ─────────────────────────────────────────────
 
-   /** Strategy used to place sample points inside the target area. */
+   /**
+    * Strategy used to place sample points inside the target area.
+    * <ul>
+    *   <li>{@link #GRID}     – deterministic regular grid</li>
+    *   <li>{@link #JITTERED} – stratified random jitter</li>
+    * </ul>
+    */
    enum SamplingPattern {
       /** Regular N×N grid; each sample is at the centre of its cell. */
       GRID,
@@ -39,44 +45,44 @@ class Blackboard {
    // ── fields ───────────────────────────────────────────────────────────────
 
    /** Centre of the target area in world space. */
-   private Point  center;
+   private final Point  _center;
 
    /** Local horizontal axis of the target area (unit vector). */
-   private Vector vRight;
+   private final Vector _vRight;
 
    /** Local vertical axis of the target area (unit vector). */
-   private Vector vUp;
+   private final Vector _vUp;
 
    /**
     * Half-size of the target area along each local axis.
-    * The full side length is {@code 2 * size}.
+    * The full side length is {@code 2 * _size}.
     * When zero, only the centre point is generated.
     */
-   private double size = 0;
+   private double _size = 0;
 
    /**
     * Number of samples along each axis of the grid.
-    * Total samples = {@code numSamples * numSamples}.
+    * Total samples = {@code _numSamples * _numSamples}.
     * When 1, only the centre point is generated.
     */
-   private int numSamples = 1;
+   private int _numSamples = 1;
 
    /** Active sampling strategy. */
-   private SamplingPattern pattern = SamplingPattern.GRID;
+   private SamplingPattern _pattern = SamplingPattern.GRID;
 
    // ── constructor ──────────────────────────────────────────────────────────
 
    /**
     * Creates a Blackboard centred at {@code center} with the given local axes.
     *
-    * @param center the centre of the target area
-    * @param vRight the local horizontal unit vector
-    * @param vUp    the local vertical unit vector
+    * @param  center the centre of the target area
+    * @param  vRight the local horizontal unit vector
+    * @param  vUp    the local vertical unit vector
     */
    Blackboard(Point center, Vector vRight, Vector vUp) {
-      this.center = center;
-      this.vRight = vRight;
-      this.vUp    = vUp;
+      _center = center;
+      _vRight = vRight;
+      _vUp    = vUp;
    }
 
    // ── fluent setters ───────────────────────────────────────────────────────
@@ -84,11 +90,11 @@ class Blackboard {
    /**
     * Sets the half-size of the target area.
     *
-    * @param size half-side length; must be ≥ 0
-    * @return this blackboard (for chaining)
+    * @param  size half-side length; must be ≥ 0
+    * @return      this blackboard (for chaining)
     */
    Blackboard setSize(double size) {
-      this.size = size;
+      _size = size;
       return this;
    }
 
@@ -96,22 +102,22 @@ class Blackboard {
     * Sets the number of samples along each axis.
     * Total sample count will be {@code n * n}.
     *
-    * @param n samples per axis; must be ≥ 1
-    * @return this blackboard (for chaining)
+    * @param  n samples per axis; must be ≥ 1
+    * @return   this blackboard (for chaining)
     */
    Blackboard setNumSamples(int n) {
-      this.numSamples = n;
+      _numSamples = n;
       return this;
    }
 
    /**
     * Sets the sampling pattern.
     *
-    * @param pattern GRID or JITTERED
-    * @return this blackboard (for chaining)
+    * @param  pattern GRID or JITTERED
+    * @return         this blackboard (for chaining)
     */
    Blackboard setPattern(SamplingPattern pattern) {
-      this.pattern = pattern;
+      _pattern = pattern;
       return this;
    }
 
@@ -127,27 +133,27 @@ class Blackboard {
     * @return a non-empty list of world-space sample points
     */
    List<Point> generateSamplePoints() {
-      if (isZero(size) || numSamples == 1)
-         return List.of(center);
+      if (isZero(_size) || _numSamples == 1)
+         return List.of(_center);
 
-      List<Point> points = new ArrayList<>(numSamples * numSamples);
+      List<Point> points = new ArrayList<>(_numSamples * _numSamples);
 
-      double cellSize = (2.0 * size) / numSamples;
-      double start    = -size + cellSize / 2.0;
+      double cellSize = (2.0 * _size) / _numSamples;
+      double start    = -_size + cellSize / 2.0;
 
-      for (int row = 0; row < numSamples; row++) {
-         for (int col = 0; col < numSamples; col++) {
+      for (int row = 0; row < _numSamples; row++) {
+         for (int col = 0; col < _numSamples; col++) {
             double offsetX = start + col * cellSize;
             double offsetY = start + row * cellSize;
 
-            if (pattern == SamplingPattern.JITTERED) {
+            if (_pattern == SamplingPattern.JITTERED) {
                offsetX += (Math.random() - 0.5) * cellSize;
                offsetY += (Math.random() - 0.5) * cellSize;
             }
 
-            Point samplePoint = center;
-            if (!isZero(offsetX)) samplePoint = samplePoint.add(vRight.scale(offsetX));
-            if (!isZero(offsetY)) samplePoint = samplePoint.add(vUp.scale(offsetY));
+            Point samplePoint = _center;
+            if (!isZero(offsetX)) samplePoint = samplePoint.add(_vRight.scale(offsetX));
+            if (!isZero(offsetY)) samplePoint = samplePoint.add(_vUp.scale(offsetY));
             points.add(samplePoint);
          }
       }
