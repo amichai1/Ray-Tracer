@@ -354,7 +354,7 @@ public class Camera implements Cloneable {
             threads.add(new Thread(() -> {
                 PixelManager.Pixel pixel;
                 while ((pixel = _pixelManager.nextPixel()) != null)
-                    castRay(pixel.col(), pixel.row());
+                    castRay(pixel.row(), pixel.col());
             }));
         for (var thread : threads) thread.start();
         try { for (var thread : threads) thread.join(); }
@@ -648,7 +648,7 @@ public class Camera implements Cloneable {
             if (_camera._rayTracer == null)
                 setRayTracer(new Scene("default"), RayTracerType.SIMPLE);
             try {
-                return (Camera) _camera.clone();
+                return _camera.clone();
             } catch (CloneNotSupportedException _) {
                 return null;
             }
