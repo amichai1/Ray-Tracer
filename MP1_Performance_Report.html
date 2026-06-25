@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מיני פרויקט 1 – דוח ביצועי Anti-Aliasing ו-DOF</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, "Segoe UI", sans-serif;
+            font-size: 12px;
+            color: #222;
+            direction: rtl;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 18mm 18mm 14mm 18mm;
+            page-break-after: always;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .authors {
+            text-align: center;
+            font-size: 11px;
+            color: #333;
+            margin-bottom: 18px;
+        }
+
+        h2 {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a3a5c;
+            border-bottom: 2px solid #1a3a5c;
+            padding-bottom: 3px;
+            margin: 18px 0 8px 0;
+        }
+
+        p {
+            font-size: 11px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0 14px 0;
+            font-size: 11px;
+            direction: rtl;
+        }
+
+        th {
+            background-color: #1a3a5c;
+            color: #fff;
+            padding: 7px 9px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 6px 9px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        td.right {
+            text-align: right;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f4f7fb;
+        }
+
+        tr.slow {
+            background-color: #fff0f0 !important;
+        }
+
+        .note {
+            font-size: 10px;
+            color: #666;
+            font-style: italic;
+            margin: 4px 0 10px 0;
+        }
+
+        .image-block img {
+            width: 155px;
+            border: 1px solid #ccc;
+        }
+
+        .footer {
+            font-size: 9px;
+            color: #aaa;
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .obs-list {
+            margin: 6px 16px 10px 0;
+            font-size: 11px;
+            line-height: 1.7;
+            list-style-type: disc;
+        }
+
+        .obs-list li {
+            margin-bottom: 5px;
+        }
+
+        .obs-list li b {
+            color: #1a3a5c;
+        }
+
+        .img-row {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0 14px 0;
+            justify-content: center;
+        }
+
+        .img-cell {
+            text-align: center;
+            flex: 1;
+        }
+
+        .img-cell img {
+            width: 100%;
+            max-width: 130px;
+            border: 1px solid #ccc;
+        }
+
+        .img-cell .cap {
+            font-size: 10px;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        @media print {
+            .page {
+                margin: 0;
+                padding: 15mm 15mm 12mm 15mm;
+            }
+
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════  עמוד 1  ═══════════════════════════════ -->
+<div class="page">
+
+    <h1>מיני פרויקט 1 – מדידות ביצועי Anti-Aliasing ו-Depth of Field</h1>
+    <div class="subtitle">דוח זמני עיבוד להשפעת שיפורי איכות התמונה על זמן הרינדור</div>
+    <div class="authors">עמיחי מוקדס &nbsp;ו&nbsp; מיכאל דבאח &nbsp;·&nbsp; ISE5786 &nbsp;·&nbsp; 2025–2026</div>
+
+    <p>
+        מיני פרויקט 1 יישם שני אלגוריתמי שיפור איכות תמונה:
+        <b>Anti-Aliasing (AA)</b> המבוסס על Super-Sampling רשתי – כל פיקסל מוצלב
+        על ידי רשת 3×3 של קרניים (9 קרניים לפיקסל), ו-<b>Depth of Field (DOF)</b>
+        המדמה פתחה (Aperture) ריאלית – כל קרן ראשית מוחלפת בסמפלים מרובים דרך
+        פתחה מעגלית, וממוצעם יוצר אפקט פוקוס.
+    </p>
+
+    <h2>MP1Tests – השפעת AA ו-DOF בנפרד</h2>
+    <p class="note">
+        כל Feature נמדד מול Baseline מתאים (ללא אותה Feature).
+        עומס = זמן עם Feature ÷ זמן Baseline.
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th class="right" style="text-align:right">בדיקה</th>
+            <th>Feature פעיל</th>
+            <th>זמן (שנ')</th>
+            <th>עומס יחסי ל-Baseline</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td class="right">AA off (Baseline)</td>
+            <td>ללא שיפורים</td>
+            <td>4.197</td>
+            <td>1.00x</td>
+        </tr>
+        <tr class="slow">
+            <td class="right">AA on</td>
+            <td>Anti-Aliasing 3×3 (9 קרניים/פיקסל)</td>
+            <td>286.642</td>
+            <td>68.3x איטי יותר</td>
+        </tr>
+        <tr>
+            <td class="right">DOF off (Baseline)</td>
+            <td>ללא שיפורים</td>
+            <td>4.723</td>
+            <td>1.00x</td>
+        </tr>
+        <tr class="slow">
+            <td class="right">DOF on</td>
+            <td>Depth of Field (Aperture simulation)</td>
+            <td>315.583</td>
+            <td>66.8x איטי יותר</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="img-row">
+        <div class="img-cell">
+            <img src="images/aa_off.png" alt="AA off"/>
+            <div class="cap">AA off – ללא Anti-Aliasing</div>
+        </div>
+        <div class="img-cell">
+            <img src="images/aa_on.png" alt="AA on"/>
+            <div class="cap">AA on – Super-Sampling 3×3</div>
+        </div>
+        <div class="img-cell">
+            <img src="images/dof_off.png" alt="DOF off"/>
+            <div class="cap">DOF off – ללא Depth of Field</div>
+        </div>
+        <div class="img-cell">
+            <img src="images/dof_on.png" alt="DOF on"/>
+            <div class="cap">DOF on – Aperture simulation</div>
+        </div>
+    </div>
+
+    <div class="footer">עמוד 1</div>
+</div>
+
+
+<!-- ═══════════════════════════════  עמוד 2  ═══════════════════════════════ -->
+<div class="page">
+
+    <h2>תובנות מרכזיות</h2>
+    <ul class="obs-list">
+        <li>
+            <b>עומס AA גבוה בהרבה מ-9×:</b>
+            כל אחת מ-9 קרניי ה-Super-Sampling מייצרת קרניים משניות לצל, השתקפות
+            ושקיפות. הצטברות הקרניים הישירות והמשניות מניבה עומס של כ-68× על פני
+            Baseline חד-קרני, הרבה מעבר לגורם הכפל הנומינלי של 9.
+        </li>
+        <li>
+            <b>DOF מביא לעומס דומה ל-AA (כ-67×).</b>
+            כל פיקסל מוצלב מול סמפלים מרובים על הפתחה, כאשר כל קרן כזו מייצרת שוב
+            קרניים משניות – תהליך הדומה מבחינת עלות ל-Super-Sampling.
+        </li>
+    </ul>
+
+    <p style="margin-top: 16px; font-size: 11px;">
+        <b>סיכום:</b> שתי ה-Features של MP1 (AA ו-DOF) מוסיפות עומס כבד (~67–68×),
+        שמקורו בריבוי קרניים ראשיות ומשניות לכל פיקסל.
+    </p>
+
+    <div class="footer">עמוד 2</div>
+</div>
+
+</body>
+</html>
