@@ -1,6 +1,6 @@
 package renderer;
 
-import geometries.impl.Cylinder;
+import geometries.api.Geometry;
 import geometries.impl.Plane;
 import geometries.impl.Sphere;
 import geometries.impl.Triangle;
@@ -12,341 +12,254 @@ import org.junit.jupiter.api.Test;
 import primitives.Color;
 import primitives.Material;
 import primitives.Point;
-import primitives.Ray;
 import primitives.Vector;
 import scene.Scene;
 
 /**
  * Demonstration tests for Mini-Project 1: super-sampling improvements.
- *
  * <p>Each improvement is tested with two renders of the same scene:
  * <ol>
- *   <li>Improvement disabled  – one ray per pixel (baseline)</li>
- *   <li>Improvement enabled   – super-sampled beam, colors averaged</li>
+ *   <li>Improvement disabled - one ray per pixel (baseline)</li>
+ *   <li>Improvement enabled - super-sampled beam, colors averaged</li>
  * </ol>
- *
  * <p>Render times are printed so the performance trade-off is visible.
+ *
+ * @author Gemini
  */
 class MP1Tests {
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Anti-Aliasing
-    // ═══════════════════════════════════════════════════════════════════════
+    // ==========================================================
+    // SHARED SCENE BUILDER
+    // ==========================================================
 
     /**
-     * Builds the anti-aliasing demonstration scene.
-     *
-     * <p>The scene contains 12 geometries placed so that many object edges cut
-     * diagonally across pixel boundaries, making aliasing (jagged edges) clearly
-     * visible on the baseline render and demonstrably smoother with AA enabled.
-     *
+     * Builds the shared demonstration scene featuring a sunset beach.
+     * <p>The scene contains multiple geometries arranged to test rendering performance
+     * and visual effects (Anti-Aliasing and Depth of Field).
      * <ul>
-     *   <li>1 ground plane
-     *   <li>4 large spheres in a row (diagonal silhouettes)
-     *   <li>2 small mirror spheres
-     *   <li>3 triangles forming a geometric shape
-     *   <li>1 cylinder
-     *   <li>1 back-wall plane
+     *   <li>1 Sand plane</li>
+     *   <li>2 Sea (triangles)</li>
+     *   <li>1 Setting sun (sphere)</li>
+     *   <li>2 Umbrellas (built completely from triangles)</li>
+     *   <li>1 Green woven mat (built from 1,000 triangles for BVH stress testing)</li>
+     *   <li>1 Wooden sun lounger (built from triangles)</li>
      * </ul>
+     * <p>Lights: 2 Directional lights + 2 Point lights + 1 Spot light.
      *
-     * <p>Lights: 1 ambient + 1 directional + 2 point lights.
+     * @param scene the scene to be configured
      */
-    private Scene buildAaScene() {
-        Scene scene = new Scene("AA Demo");
-        scene.setAmbientLight(new AmbientLight(new Color(8, 8, 8)));
-        scene.setBackground(new Color(10, 10, 30));
+    private void buildSharedSunsetBeach(Scene scene) {
+        scene.setBackground(new Color(255, 100, 50)); // Deep sunset sky
+        scene.setAmbientLight(new AmbientLight(new Color(20, 15, 15)));
 
-        // ── ground plane ────────────────────────────────────────────────────
-        scene.geometries.add(
-                new Plane(new Point(0, -80, 0), new Vector(0, 1, 0))
-                        .setEmission(new Color(10, 8, 6))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.2).setShininess(10).setKR(0.1))
-        );
+        Material sandMat = new Material().setKD(0.7).setKS(0.1).setShininess(5);
+        Material waterMat = new Material().setKD(0.1).setKS(0.9).setShininess(200).setKR(0.7);
+        Material woodMat = new Material().setKD(0.6).setKS(0.2).setShininess(10);
+        Material fabricMat = new Material().setKD(0.8).setKS(0.1).setShininess(5);
 
-        // ── back wall ───────────────────────────────────────────────────────
-        scene.geometries.add(
-                new Plane(new Point(0, 0, -400), new Vector(0, 0, 1))
-                        .setEmission(new Color(8, 8, 18))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.1).setShininess(5))
-        );
+        java.util.function.Consumer<Geometry> addGeo = g -> scene.geometries.add(g);
 
-        // ── four coloured spheres in a row ──────────────────────────────────
-        scene.geometries.add(
-                new Sphere(new Point(-170, 0, -200), 50)
-                        .setEmission(new Color(80, 10, 10))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(80)),
-                new Sphere(new Point(-55, 0, -200), 50)
-                        .setEmission(new Color(10, 70, 20))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(80)),
-                new Sphere(new Point(55, 0, -200), 50)
-                        .setEmission(new Color(10, 30, 100))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(80)),
-                new Sphere(new Point(170, 0, -200), 50)
-                        .setEmission(new Color(100, 70, 0))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(80))
-        );
+        // --- Ground plane (Sand) ---
+        addGeo.accept(new Plane(new Point(0, 0, 0), new Vector(0, 1, 0))
+                .setEmission(new Color(150, 110, 50)).setMaterial(sandMat));
 
-        // ── two small mirror spheres ────────────────────────────────────────
-        scene.geometries.add(
-                new Sphere(new Point(-90, -40, -120), 25)
-                        .setEmission(new Color(5, 5, 5))
-                        .setMaterial(new Material().setKD(0.1).setKS(0.8).setShininess(200).setKR(0.7)),
-                new Sphere(new Point(90, -40, -120), 25)
-                        .setEmission(new Color(5, 5, 5))
-                        .setMaterial(new Material().setKD(0.1).setKS(0.8).setShininess(200).setKR(0.7))
-        );
+        // --- Sea (Water plane built from triangles) ---
+        addGeo.accept(new Triangle(new Point(-1000, 0.2, -10), new Point(1000, 0.2, -10), new Point(0, 0.2, -2000))
+                .setEmission(new Color(10, 20, 60)).setMaterial(waterMat));
 
-        // ── three triangles ─────────────────────────────────────────────────
-        scene.geometries.add(
-                new Triangle(new Point(-30, 60, -180), new Point(30, 60, -180), new Point(0, 120, -180))
-                        .setEmission(new Color(50, 0, 80))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40)),
-                new Triangle(new Point(-200, -80, -300), new Point(-120, -80, -300), new Point(-160, 20, -300))
-                        .setEmission(new Color(0, 60, 65))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40)),
-                new Triangle(new Point(120, -80, -300), new Point(200, -80, -300), new Point(160, 20, -300))
-                        .setEmission(new Color(80, 45, 0))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40))
-        );
+        // --- Setting Sun ---
+        addGeo.accept(new Sphere(new Point(0, 20, -500), 80)
+                .setEmission(new Color(255, 180, 50)));
 
-        // ── cylinder ────────────────────────────────────────────────────────
-        scene.geometries.add(
-                new Cylinder(18, new Ray(new Point(0, -80, -160), new Vector(0, 1, 0)), 120)
-                        .setEmission(new Color(25, 25, 25))
-                        .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100))
-        );
+        // --- Umbrellas with huge orange poles ---
+        Color orangePole = new Color(255, 80, 0);
+        Point[] umbrellaCenters = {new Point(-20, 0, 25), new Point(20, 0, 25)};
 
-        // ── lights ──────────────────────────────────────────────────────────
-        scene.lights.add(
-                new DirectionalLight(new Color(25, 25, 35), new Vector(1, -1, -1))
-        );
-        scene.lights.add(
-                new PointLight(new Color(150, 120, 120), new Point(-200, 200, 100))
-                        .setKl(0.0001).setKq(0.000001)
-        );
-        scene.lights.add(
-                new SpotLight(new Color(200, 160, 80), new Point(200, 200, 100), new Vector(-1, -1, -1))
-                        .setKl(0.0008).setKq(0.000008)
-        );
+        for (Point center : umbrellaCenters) {
+            double cx = center.getX();
+            double cz = center.getZ();
+            double w = 1.5;
 
-        return scene;
+            // Pillar Base vertices
+            Point b1 = new Point(cx - w, 0, cz - w); Point b2 = new Point(cx + w, 0, cz - w);
+            Point b3 = new Point(cx + w, 0, cz + w); Point b4 = new Point(cx - w, 0, cz + w);
+            // Pillar Top vertices
+            Point t1 = new Point(cx - w, 22, cz - w); Point t2 = new Point(cx + w, 22, cz - w);
+            Point t3 = new Point(cx + w, 22, cz + w); Point t4 = new Point(cx - w, 22, cz + w);
+
+            // Front face
+            addGeo.accept(new Triangle(b1, b2, t2).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b1, t2, t1).setEmission(orangePole).setMaterial(woodMat));
+            // Back face
+            addGeo.accept(new Triangle(b3, b4, t4).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b3, t4, t3).setEmission(orangePole).setMaterial(woodMat));
+            // Right face
+            addGeo.accept(new Triangle(b2, b3, t3).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b2, t3, t2).setEmission(orangePole).setMaterial(woodMat));
+            // Left face
+            addGeo.accept(new Triangle(b4, b1, t1).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b4, t1, t4).setEmission(orangePole).setMaterial(woodMat));
+
+            // Top Tip
+            addGeo.accept(new Sphere(new Point(cx, 24, cz), 3).setEmission(orangePole).setMaterial(woodMat));
+
+            // Canopy
+            Point top = new Point(cx, 22, cz);
+            for (int angle = 0; angle < 360; angle += 15) {
+                double rad1 = Math.toRadians(angle);
+                double rad2 = Math.toRadians(angle + 15);
+                Point p1 = new Point(cx + Math.cos(rad1) * 18, 15, cz + Math.sin(rad1) * 18);
+                Point p2 = new Point(cx + Math.cos(rad2) * 18, 15, cz + Math.sin(rad2) * 18);
+
+                Color uColor = (angle % 30 == 0) ? new Color(220, 30, 30) : new Color(250, 250, 250);
+                addGeo.accept(new Triangle(top, p1, p2).setEmission(uColor).setMaterial(fabricMat));
+            }
+        }
+
+        // --- Green Woven Mat (Built with 1,000 Triangles) ---
+        Color greenMatColor = new Color(20, 160, 20);
+        double matStartX = -10;
+        double matStartZ = 40;
+        int cols = 25;
+        int rows = 20;
+        double tileW = 20.0 / cols;
+        double tileH = 35.0 / rows;
+
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double x = matStartX + col * tileW;
+                double z = matStartZ - row * tileH;
+                Point p1 = new Point(x, 0.3, z);
+                Point p2 = new Point(x + tileW, 0.3, z);
+                Point p3 = new Point(x + tileW, 0.3, z - tileH);
+                Point p4 = new Point(x, 0.3, z - tileH);
+
+                addGeo.accept(new Triangle(p1, p2, p3).setEmission(greenMatColor).setMaterial(fabricMat));
+                addGeo.accept(new Triangle(p1, p3, p4).setEmission(greenMatColor).setMaterial(fabricMat));
+            }
+        }
+
+        // --- Wooden Sun Lounger ---
+        Color loungerColor = new Color(220, 220, 220);
+        Point s1 = new Point(12, 1, 35); Point s2 = new Point(18, 1, 35);
+        Point s3 = new Point(18, 1, 20); Point s4 = new Point(12, 1, 20);
+        addGeo.accept(new Triangle(s1, s2, s3).setEmission(loungerColor).setMaterial(woodMat));
+        addGeo.accept(new Triangle(s1, s3, s4).setEmission(loungerColor).setMaterial(woodMat));
+
+        Point bl1 = new Point(12, 1, 35); Point bl2 = new Point(18, 1, 35);
+        Point bl3 = new Point(18, 6, 40); Point bl4 = new Point(12, 6, 40);
+        addGeo.accept(new Triangle(bl1, bl2, bl3).setEmission(loungerColor).setMaterial(woodMat));
+        addGeo.accept(new Triangle(bl1, bl3, bl4).setEmission(loungerColor).setMaterial(woodMat));
+
+        // --- Lights ---
+        scene.lights.add(new DirectionalLight(new Color(150, 100, 50), new Vector(0, -0.2, -1)));
+        scene.lights.add(new DirectionalLight(new Color(30, 40, 60), new Vector(0, -1, 0)));
+        scene.lights.add(new PointLight(new Color(255, 150, 50), new Point(0, 30, -350)).setKl(0.0001).setKq(0.00001));
+        scene.lights.add(new PointLight(new Color(80, 80, 80), new Point(0, 50, 100)).setKl(0.001).setKq(0.0001));
+        scene.lights.add(new SpotLight(new Color(100, 100, 100), new Point(-20, 60, 60), new Vector(1, -1, -0.5)).setKl(0.001).setKq(0.0001));
     }
+
+    // ==========================================================
+    // TESTS
+    // ==========================================================
 
     /**
      * Renders the AA scene without anti-aliasing (single ray per pixel).
      */
     @Test
     void antiAliasingOff() {
+        Scene scene = new Scene("MP1 AA Off");
+        buildSharedSunsetBeach(scene);
+
         long startTime = System.currentTimeMillis();
         Camera.getBuilder()
-                .setLocation(new Point(0, 0, 400))
-                .setDirection(new Point(0, 0, -200), Vector.AXIS_Y)
-                .setVpDistance(400)
-                .setVpSize(300, 300)
+                .setLocation(new Point(0, 15, 75))
+                .setDirection(new Vector(0, 0, -1), new Vector(0, 1, 0))
+                .setVpDistance(50)
+                .setVpSize(150, 150)
                 .setResolution(800, 800)
-                .setRayTracer(buildAaScene(), RayTracerType.SIMPLE)
-                // numSamples = 1  →  anti-aliasing disabled
+                .setRayTracer(scene, RayTracerType.SIMPLE)
                 .setAntiAliasing(1)
+                .setDebugPrint(1)
                 .build()
                 .renderImage()
-                .writeToImage("aa_off");
-        System.out.printf("AA off  – render time: %d ms%n", System.currentTimeMillis() - startTime);
+                .writeToImage("mp1_aa_off_beach");
+        System.out.printf("AA off    render time: %d ms%n", System.currentTimeMillis() - startTime);
     }
 
     /**
-     * Renders the AA scene with anti-aliasing enabled (9×9 = 81 rays per pixel).
+     * Renders the AA scene with anti-aliasing enabled (9x9 = 81 rays per pixel).
      */
     @Test
     void antiAliasingOn() {
+        Scene scene = new Scene("MP1 AA On");
+        buildSharedSunsetBeach(scene);
+
         long startTime = System.currentTimeMillis();
         Camera.getBuilder()
-                .setLocation(new Point(0, 0, 400))
-                .setDirection(new Point(0, 0, -200), Vector.AXIS_Y)
-                .setVpDistance(400)
-                .setVpSize(300, 300)
+                .setLocation(new Point(0, 15, 75))
+                .setDirection(new Vector(0, 0, -1), new Vector(0, 1, 0))
+                .setVpDistance(50)
+                .setVpSize(150, 150)
                 .setResolution(800, 800)
-                .setRayTracer(buildAaScene(), RayTracerType.SIMPLE)
-                // 9×9 grid  →  81 rays per pixel
+                .setRayTracer(scene, RayTracerType.SIMPLE)
                 .setAntiAliasing(9)
                 .setMultithreading(-2)
                 .setDebugPrint(1)
                 .build()
                 .renderImage()
-                .writeToImage("aa_on");
-        System.out.printf("AA on   – render time: %d ms%n", System.currentTimeMillis() - startTime);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Depth of Field
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Builds the depth-of-field demonstration scene.
-     *
-     * <p>Objects are arranged in depth along the Z-axis so that only the ones
-     * near the focal plane look sharp while the rest appear blurred.
-     *
-     * <ul>
-     *   <li>1 ground plane
-     *   <li>5 spheres at different Z depths
-     *   <li>2 reflective spheres (one in focus, one out)
-     *   <li>3 triangles at varying depths
-     *   <li>1 cylinder at the focal plane
-     *   <li>1 back-wall plane
-     * </ul>
-     *
-     * <p>The camera focal length is set to 500, so objects near Z = −100 are
-     * sharp and objects at Z = −600 are noticeably blurred.
-     */
-    private Scene buildDofScene() {
-        Scene scene = new Scene("DOF Demo");
-        scene.setAmbientLight(new AmbientLight(new Color(8, 8, 10)));
-        scene.setBackground(new Color(5, 5, 20));
-
-        // ── ground plane ────────────────────────────────────────────────────
-        scene.geometries.add(
-                new Plane(new Point(0, -90, 0), new Vector(0, 1, 0))
-                        .setEmission(new Color(12, 10, 8))
-                        .setMaterial(new Material().setKD(0.7).setKS(0.1).setShininess(5).setKR(0.05))
-        );
-
-        // ── back wall ───────────────────────────────────────────────────────
-        scene.geometries.add(
-                new Plane(new Point(0, 0, -700), new Vector(0, 0, 1))
-                        .setEmission(new Color(6, 6, 15))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.1).setShininess(5))
-        );
-
-        // ── spheres at increasing depths (camera at z=400, focal at z=-100) ─
-        // very close  – blurred
-        scene.geometries.add(
-                new Sphere(new Point(-60, 0, 200), 40)
-                        .setEmission(new Color(90, 15, 15))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(60))
-        );
-        // close – slightly blurred
-        scene.geometries.add(
-                new Sphere(new Point(60, 10, 50), 40)
-                        .setEmission(new Color(90, 60, 5))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(60))
-        );
-        // IN FOCUS (focal distance ≈ 500 → world z ≈ -100)
-        scene.geometries.add(
-                new Sphere(new Point(0, 5, -100), 45)
-                        .setEmission(new Color(10, 90, 30))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.5).setShininess(100))
-        );
-        // far – slightly blurred
-        scene.geometries.add(
-                new Sphere(new Point(-80, 0, -300), 40)
-                        .setEmission(new Color(10, 40, 100))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(60))
-        );
-        // very far – blurred
-        scene.geometries.add(
-                new Sphere(new Point(80, 0, -550), 40)
-                        .setEmission(new Color(70, 15, 90))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.4).setShininess(60))
-        );
-
-        // ── reflective spheres ───────────────────────────────────────────────
-        // in-focus reflective
-        scene.geometries.add(
-                new Sphere(new Point(-130, -20, -100), 30)
-                        .setEmission(new Color(5, 5, 5))
-                        .setMaterial(new Material().setKD(0.1).setKS(0.8).setShininess(200).setKR(0.8))
-        );
-        // out-of-focus reflective
-        scene.geometries.add(
-                new Sphere(new Point(130, -20, -500), 30)
-                        .setEmission(new Color(5, 5, 5))
-                        .setMaterial(new Material().setKD(0.1).setKS(0.8).setShininess(200).setKR(0.8))
-        );
-
-        // ── triangles at varying depths ──────────────────────────────────────
-        scene.geometries.add(
-                new Triangle(new Point(-60, 60, -100), new Point(0, 60, -100), new Point(-30, 110, -100))
-                        .setEmission(new Color(80, 55, 0))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40)),
-                new Triangle(new Point(40, 50, 100), new Point(100, 50, 100), new Point(70, 100, 100))
-                        .setEmission(new Color(0, 60, 70))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40)),
-                new Triangle(new Point(-40, 50, -450), new Point(40, 50, -450), new Point(0, 110, -450))
-                        .setEmission(new Color(90, 20, 20))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(40))
-        );
-
-        // ── cylinder at focal plane ──────────────────────────────────────────
-        scene.geometries.add(
-                new Cylinder(20, new Ray(new Point(100, -90, -100), new Vector(0, 1, 0)), 110)
-                        .setEmission(new Color(30, 30, 30))
-                        .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100))
-        );
-
-        // ── lights ──────────────────────────────────────────────────────────
-        scene.lights.add(
-                new DirectionalLight(new Color(18, 18, 28), new Vector(0, -1, -1))
-        );
-        scene.lights.add(
-                new PointLight(new Color(180, 140, 100), new Point(-200, 200, 200))
-                        .setKl(0.0001).setKq(0.000001)
-        );
-        scene.lights.add(
-                new SpotLight(new Color(220, 180, 100), new Point(200, 300, 100), new Vector(-1, -2, -2))
-                        .setKl(0.00008).setKq(0.0000008)
-        );
-
-        return scene;
+                .writeToImage("mp1_aa_on_beach");
+        System.out.printf("AA on     render time: %d ms%n", System.currentTimeMillis() - startTime);
     }
 
     /**
      * Renders the DOF scene without depth-of-field (all objects equally sharp).
-     * Camera is at z=400, looking toward z=-100.
      */
     @Test
     void depthOfFieldOff() {
+        Scene scene = new Scene("MP1 DOF Off");
+        buildSharedSunsetBeach(scene);
+
         long startTime = System.currentTimeMillis();
         Camera.getBuilder()
-                .setLocation(new Point(0, 0, 400))
-                .setDirection(new Point(0, 0, -100), Vector.AXIS_Y)
-                .setVpDistance(400)
-                .setVpSize(300, 300)
+                .setLocation(new Point(0, 15, 75))
+                .setDirection(new Vector(0, 0, -1), new Vector(0, 1, 0))
+                .setVpDistance(50)
+                .setVpSize(150, 150)
                 .setResolution(800, 800)
-                .setRayTracer(buildDofScene(), RayTracerType.SIMPLE)
-                // focalLength = 0  →  depth-of-field disabled
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setDebugPrint(1)
                 .build()
                 .renderImage()
-                .writeToImage("dof_off");
-        System.out.printf("DOF off – render time: %d ms%n", System.currentTimeMillis() - startTime);
+                .writeToImage("mp1_dof_off_beach");
+        System.out.printf("DOF off   render time: %d ms%n", System.currentTimeMillis() - startTime);
     }
 
     /**
      * Renders the DOF scene with depth-of-field enabled.
-     *
-     * <p>Camera is at z=400; focal length = 500, so the focal plane sits at
-     * z = 400−500 = −100.  Objects centred near z=−100 appear sharp; those
-     * at z=200 or z=−550 are blurred proportional to their defocus distance.
-     *
-     * <p>Aperture half-size = 6, samples = 9×9 = 81 rays per pixel.
+     * <p>Camera is at z=75; focal distance is set to 54 units, bringing the umbrellas
+     * perfectly into focus while blurring the distant sea and sun.
+     * <p>Aperture size = 0.3, samples = 9x9 = 81 rays per pixel.
      */
     @Test
     void depthOfFieldOn() {
+        Scene scene = new Scene("MP1 DOF On");
+        buildSharedSunsetBeach(scene);
+
         long startTime = System.currentTimeMillis();
         Camera.getBuilder()
-                .setLocation(new Point(0, 0, 400))
-                .setDirection(new Point(0, 0, -100), Vector.AXIS_Y)
-                .setVpDistance(400)
-                .setVpSize(300, 300)
+                .setLocation(new Point(0, 15, 75))
+                .setDirection(new Vector(0, 0, -1), new Vector(0, 1, 0))
+                .setVpDistance(50)
+                .setVpSize(150, 150)
                 .setResolution(800, 800)
-                .setRayTracer(buildDofScene(), RayTracerType.SIMPLE)
-                // focal length 500 → focal plane at z = 400-500 = -100
-                // aperture half-size 6, 9×9 = 81 aperture samples
-                .setDepthOfField(500, 6, 9)
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setDepthOfField(54, 0.3, 9)
                 .setMultithreading(-2)
                 .setDebugPrint(1)
                 .build()
                 .renderImage()
-                .writeToImage("dof_on");
-        System.out.printf("DOF on  – render time: %d ms%n", System.currentTimeMillis() - startTime);
+                .writeToImage("mp1_dof_on_beach");
+        System.out.printf("DOF on    render time: %d ms%n", System.currentTimeMillis() - startTime);
     }
 }
