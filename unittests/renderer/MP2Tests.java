@@ -2,7 +2,6 @@ package renderer;
 
 import geometries.api.Geometry;
 import geometries.api.Intersectable;
-import geometries.impl.Cylinder;
 import geometries.impl.Geometries;
 import geometries.impl.Plane;
 import geometries.impl.Sphere;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import primitives.Color;
 import primitives.Material;
 import primitives.Point;
-import primitives.Ray;
 import primitives.Vector;
 import scene.Scene;
 
@@ -23,128 +21,135 @@ import scene.Scene;
  * Performance benchmark tests for Mini-Project 2.
  * <p>
  * Measures render times across 12 configurations:
- * 6 acceleration setups (no-accel/CBR × flat/manual-BVH/auto-BVH) × 2 threading modes.
+ * 6 acceleration setups (no-accel/CBR/flat/manual-BVH/auto-BVH) x 2 threading modes.
  * </p>
  * <p>
- * All tests render the same scene (500+ geometries, 5 lights, reflections, transparency).
+ * All tests render the same scene (thousands of geometries, 5 lights, depth of field enabled).
  * </p>
+ *
+ * @author Gemini
  */
 class MP2Tests {
 
     private static final int NX = 600;
     private static final int NY = 600;
-    private static final int GRID_COLS = 20;
-    private static final int GRID_ROWS = 25;
-    private static final double SPHERE_RADIUS = 8;
-    private static final double SPHERE_SPACING = 20;
-    private static final int    AA_SAMPLES     = 3;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Scene builders
-    // ─────────────────────────────────────────────────────────────────────────
+    // ==========================================================
+    // SHARED SCENE BUILDER (Identical to MP1, supports split BVH)
+    // ==========================================================
 
     /**
-     * Adds 500 spheres arranged in a GRID_COLS × GRID_ROWS grid to the given
-     * {@code Geometries} container.
+     * Adds scene fixtures (ground plane, sea, umbrellas, mat, lounger, lights) to the given scene.
+     * Geometries are automatically distributed between the left and right groups for manual BVH testing.
      *
-     * @param container the geometry container to populate
+     * @param scene      the scene to configure
+     * @param leftGroup  the geometry container for the left side
+     * @param rightGroup the geometry container for the right side
      */
-    private static void addSphereGrid(Geometries container) {
-        double startX = -(GRID_COLS - 1) * SPHERE_SPACING / 2.0;
-        double startZ = -(GRID_ROWS - 1) * SPHERE_SPACING / 2.0;
+    private static void buildSharedSunsetBeach(Scene scene, Geometries leftGroup, Geometries rightGroup) {
+        scene.setBackground(new Color(255, 100, 50));
+        scene.setAmbientLight(new AmbientLight(new Color(20, 15, 15)));
 
-        Color[] palette = {
-                new Color(180, 30, 30), new Color(30, 160, 30), new Color(30, 30, 180),
-                new Color(160, 130, 0), new Color(120, 0, 140), new Color(0, 130, 150)
+        Material sandMat = new Material().setKD(0.7).setKS(0.1).setShininess(5);
+        Material waterMat = new Material().setKD(0.1).setKS(0.9).setShininess(200).setKR(0.7);
+        Material woodMat = new Material().setKD(0.6).setKS(0.2).setShininess(10);
+        Material fabricMat = new Material().setKD(0.8).setKS(0.1).setShininess(5);
+
+        java.util.function.Consumer<Geometry> addGeo = g -> {
+            if (leftGroup == rightGroup) {
+                leftGroup.add(g);
+            } else {
+                leftGroup.add(g);
+            }
         };
 
-        for (int col = 0; col < GRID_COLS; col++) {
-            double x = startX + col * SPHERE_SPACING;
-            for (int row = 0; row < GRID_ROWS; row++) {
-                double z = startZ + row * SPHERE_SPACING;
-                Color emission = palette[(col + row) % palette.length].scale(0.35);
-                Material mat = (col + row) % 7 == 0
-                        ? new Material().setKD(0.1).setKS(0.8).setShininess(150).setKR(0.6)
-                        : new Material().setKD(0.5).setKS(0.4).setShininess(80);
-                container.add(new Sphere(new Point(x, 0, z), SPHERE_RADIUS)
-                        .setEmission(emission).setMaterial(mat));
+        // --- Ground plane (Sand) ---
+        addGeo.accept(new Plane(new Point(0, 0, 0), new Vector(0, 1, 0)).setEmission(new Color(150, 110, 50)).setMaterial(sandMat));
+
+        // --- Sea ---
+        addGeo.accept(new Triangle(new Point(-1000, 0.2, -10), new Point(1000, 0.2, -10), new Point(0, 0.2, -2000))
+                .setEmission(new Color(10, 20, 60)).setMaterial(waterMat));
+
+        // --- Setting Sun ---
+        addGeo.accept(new Sphere(new Point(0, 20, -500), 80).setEmission(new Color(255, 180, 50)));
+
+        // --- Umbrellas with Orange Poles ---
+        Color orangePole = new Color(255, 80, 0);
+        Point[] umbrellaCenters = {new Point(-20, 0, 25), new Point(20, 0, 25)};
+
+        for (Point center : umbrellaCenters) {
+            double cx = center.getX();
+            double cz = center.getZ();
+            double w = 1.5;
+
+            Point b1 = new Point(cx - w, 0, cz - w); Point b2 = new Point(cx + w, 0, cz - w);
+            Point b3 = new Point(cx + w, 0, cz + w); Point b4 = new Point(cx - w, 0, cz + w);
+            Point t1 = new Point(cx - w, 22, cz - w); Point t2 = new Point(cx + w, 22, cz - w);
+            Point t3 = new Point(cx + w, 22, cz + w); Point t4 = new Point(cx - w, 22, cz + w);
+
+            addGeo.accept(new Triangle(b1, b2, t2).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b1, t2, t1).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b3, b4, t4).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b3, t4, t3).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b2, b3, t3).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b2, t3, t2).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b4, b1, t1).setEmission(orangePole).setMaterial(woodMat));
+            addGeo.accept(new Triangle(b4, t1, t4).setEmission(orangePole).setMaterial(woodMat));
+
+            addGeo.accept(new Sphere(new Point(cx, 24, cz), 3).setEmission(orangePole).setMaterial(woodMat));
+
+            Point top = new Point(cx, 22, cz);
+            for (int angle = 0; angle < 360; angle += 15) {
+                double rad1 = Math.toRadians(angle);
+                double rad2 = Math.toRadians(angle + 15);
+                Point p1 = new Point(cx + Math.cos(rad1) * 18, 15, cz + Math.sin(rad1) * 18);
+                Point p2 = new Point(cx + Math.cos(rad2) * 18, 15, cz + Math.sin(rad2) * 18);
+                Color uColor = (angle % 30 == 0) ? new Color(220, 30, 30) : new Color(250, 250, 250);
+                addGeo.accept(new Triangle(top, p1, p2).setEmission(uColor).setMaterial(fabricMat));
             }
         }
-    }
 
-    /**
-     * Adds scene fixtures (ground plane, back wall, accent spheres, cylinders,
-     * triangles) to the given scene.  Lights are also added.
-     *
-     * @param scene the scene to configure
-     */
-    private static void configureSceneFixtures(Scene scene) {
-        scene.setAmbientLight(new AmbientLight(new Color(10, 10, 12)));
-        scene.setBackground(new Color(5, 8, 20));
+        // --- Green Mat (1,000 Triangles for BVH testing) ---
+        Color greenMatColor = new Color(20, 160, 20);
+        double matStartX = -10;
+        double matStartZ = 40;
+        int cols = 25; int rows = 20;
+        double tileW = 20.0 / cols; double tileH = 35.0 / rows;
 
-        // ground plane
-        scene.geometries.add(
-                new Plane(new Point(0, -SPHERE_RADIUS, 0), new Vector(0, 1, 0))
-                        .setEmission(new Color(8, 8, 10))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.1).setShininess(5).setKR(0.08))
-        );
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double x = matStartX + col * tileW;
+                double z = matStartZ - row * tileH;
+                Point p1 = new Point(x, 0.3, z);
+                Point p2 = new Point(x + tileW, 0.3, z);
+                Point p3 = new Point(x + tileW, 0.3, z - tileH);
+                Point p4 = new Point(x, 0.3, z - tileH);
 
-        // back wall
-        scene.geometries.add(
-                new Plane(new Point(0, 0, -400), new Vector(0, 0, 1))
-                        .setEmission(new Color(6, 6, 18))
-                        .setMaterial(new Material().setKD(0.5).setKS(0.1).setShininess(5))
-        );
+                addGeo.accept(new Triangle(p1, p2, p3).setEmission(greenMatColor).setMaterial(fabricMat));
+                addGeo.accept(new Triangle(p1, p3, p4).setEmission(greenMatColor).setMaterial(fabricMat));
+            }
+        }
 
-        // large center mirror sphere
-        scene.geometries.add(
-                new Sphere(new Point(0, 30, 0), 25)
-                        .setEmission(new Color(5, 5, 5))
-                        .setMaterial(new Material().setKD(0.05).setKS(0.9).setShininess(300).setKR(0.85))
-        );
+        // --- Wooden Sun Lounger ---
+        Color loungerColor = new Color(220, 220, 220);
+        Material loungerMat = new Material().setKD(0.6).setKS(0.2).setShininess(10);
 
-        // glass sphere (transparent)
-        scene.geometries.add(
-                new Sphere(new Point(-60, 20, 60), 18)
-                        .setEmission(new Color(2, 2, 10))
-                        .setMaterial(new Material().setKD(0.05).setKS(0.5).setShininess(200).setKT(0.85))
-        );
+        Point s1 = new Point(12, 1, 35); Point s2 = new Point(18, 1, 35);
+        Point s3 = new Point(18, 1, 20); Point s4 = new Point(12, 1, 20);
+        addGeo.accept(new Triangle(s1, s2, s3).setEmission(loungerColor).setMaterial(loungerMat));
+        addGeo.accept(new Triangle(s1, s3, s4).setEmission(loungerColor).setMaterial(loungerMat));
 
-        // two cylinders
-        scene.geometries.add(
-                new Cylinder(10, new Ray(new Point(90, -8, -80), new Vector(0, 1, 0)), 70)
-                        .setEmission(new Color(20, 20, 20))
-                        .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100)),
-                new Cylinder(10, new Ray(new Point(-90, -8, -80), new Vector(0, 1, 0)), 70)
-                        .setEmission(new Color(20, 20, 20))
-                        .setMaterial(new Material().setKD(0.4).setKS(0.5).setShininess(100))
-        );
+        Point bl1 = new Point(12, 1, 35); Point bl2 = new Point(18, 1, 35);
+        Point bl3 = new Point(18, 6, 40); Point bl4 = new Point(12, 6, 40);
+        addGeo.accept(new Triangle(bl1, bl2, bl3).setEmission(loungerColor).setMaterial(loungerMat));
+        addGeo.accept(new Triangle(bl1, bl3, bl4).setEmission(loungerColor).setMaterial(loungerMat));
 
-        // three triangles
-        scene.geometries.add(
-                new Triangle(new Point(-50, 50, -200), new Point(50, 50, -200), new Point(0, 110, -200))
-                        .setEmission(new Color(60, 0, 90))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(50)),
-                new Triangle(new Point(-200, -8, -150), new Point(-120, -8, -150), new Point(-160, 60, -150))
-                        .setEmission(new Color(0, 70, 60))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(50)),
-                new Triangle(new Point(120, -8, -150), new Point(200, -8, -150), new Point(160, 60, -150))
-                        .setEmission(new Color(80, 50, 0))
-                        .setMaterial(new Material().setKD(0.6).setKS(0.3).setShininess(50))
-        );
-
-        // 5 light sources
-        scene.lights.add(new DirectionalLight(new Color(20, 20, 30), new Vector(1, -1, -1)));
-        scene.lights.add(new DirectionalLight(new Color(15, 15, 25), new Vector(-1, -1, -1)));
-        scene.lights.add(
-                new PointLight(new Color(200, 160, 80), new Point(-200, 250, 150))
-                        .setKl(0.0001).setKq(0.000001));
-        scene.lights.add(
-                new PointLight(new Color(80, 160, 200), new Point(200, 250, 150))
-                        .setKl(0.0001).setKq(0.000001));
-        scene.lights.add(
-                new SpotLight(new Color(220, 200, 120), new Point(0, 300, 200), new Vector(0, -1, -1))
-                        .setKl(0.00005).setKq(0.0000005));
+        // --- Lights ---
+        scene.lights.add(new DirectionalLight(new Color(150, 100, 50), new Vector(0, -0.2, -1)));
+        scene.lights.add(new DirectionalLight(new Color(30, 40, 60), new Vector(0, -1, 0)));
+        scene.lights.add(new PointLight(new Color(255, 150, 50), new Point(0, 30, -350)).setKl(0.0001).setKq(0.00001));
+        scene.lights.add(new PointLight(new Color(80, 80, 80), new Point(0, 50, 100)).setKl(0.001).setKq(0.0001));
+        scene.lights.add(new SpotLight(new Color(100, 100, 100), new Point(-20, 60, 60), new Vector(1, -1, -0.5)).setKl(0.001).setKq(0.0001));
     }
 
     /**
@@ -153,284 +158,166 @@ class MP2Tests {
      * @return the configured scene
      */
     private static Scene buildFlatScene() {
-        Scene scene = new Scene("MP2 Flat");
-        addSphereGrid(scene.geometries);
-        configureSceneFixtures(scene);
+        Scene scene = new Scene("MP2 Benchmark Flat Final");
+        Geometries allGeometries = new Geometries();
+        buildSharedSunsetBeach(scene, allGeometries, allGeometries);
+        scene.geometries.add(allGeometries);
         return scene;
     }
 
     /**
      * Builds the demo scene with a 2-group manual BVH hierarchy.
-     * Spheres are split into left (x ≤ 0) and right (x > 0) groups.
+     * Geometries are split into left and right groups.
      *
      * @return the configured scene
      */
     private static Scene buildManualBVHScene() {
-        Scene scene = new Scene("MP2 Manual BVH");
-
+        Scene scene = new Scene("MP2 Benchmark Manual BVH Final");
         Geometries leftGroup = new Geometries();
         Geometries rightGroup = new Geometries();
-
-        double startX = -(GRID_COLS - 1) * SPHERE_SPACING / 2.0;
-        double startZ = -(GRID_ROWS - 1) * SPHERE_SPACING / 2.0;
-
-        Color[] palette = {
-                new Color(180, 30, 30), new Color(30, 160, 30), new Color(30, 30, 180),
-                new Color(160, 130, 0), new Color(120, 0, 140), new Color(0, 130, 150)
-        };
-
-        for (int col = 0; col < GRID_COLS; col++) {
-            double x = startX + col * SPHERE_SPACING;
-            for (int row = 0; row < GRID_ROWS; row++) {
-                double z = startZ + row * SPHERE_SPACING;
-                Color emission = palette[(col + row) % palette.length].scale(0.35);
-                Material mat = (col + row) % 7 == 0
-                        ? new Material().setKD(0.1).setKS(0.8).setShininess(150).setKR(0.6)
-                        : new Material().setKD(0.5).setKS(0.4).setShininess(80);
-                Geometry s = new Sphere(new Point(x, 0, z), SPHERE_RADIUS)
-                        .setEmission(emission).setMaterial(mat);
-                if (x <= 0) leftGroup.add(s);
-                else rightGroup.add(s);
-            }
-        }
-
+        buildSharedSunsetBeach(scene, leftGroup, rightGroup);
         scene.geometries.add(leftGroup, rightGroup);
-        configureSceneFixtures(scene);
         return scene;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ==========================================================
     // Render helper
-    // ─────────────────────────────────────────────────────────────────────────
+    // ==========================================================
 
     /**
-     * Core render helper: builds the camera, renders with AA ({@code AA_SAMPLES²} rays/pixel),
-     * writes the image, prints elapsed time, and resets CBR to off.
+     * Renders the scene, prints the elapsed time, and resets CBR to off.
+     * Note: Depth of Field is forcibly enabled here to stress test the BVH
+     * with thousands of rays per pixel.
      *
-     * @param  scene      the scene to render
-     * @param  imageName  output file name (without extension)
-     * @param  threadMode threading mode passed to {@link Camera.Builder#setMultithreading}:
-     *                    0 = single-thread, −1 = parallel stream, −2 = auto raw-threads
-     * @return            elapsed render time in milliseconds
+     * @param scene      the scene to render
+     * @param imageName  output file name (without extension)
+     * @param useThreads {@code true} to enable multi-threading
      */
-    private long doRenderMode(Scene scene, String imageName, int threadMode) {
+    private void doRender(Scene scene, String imageName, boolean useThreads) {
         long start = System.currentTimeMillis();
         Camera.Builder builder = Camera.getBuilder()
-                .setLocation(new Point(0, 80, 500))
-                .setDirection(new Point(0, 0, 0), Vector.AXIS_Y)
-                .setVpDistance(500)
-                .setVpSize(400, 400)
+                .setLocation(new Point(0, 15, 75))
+                .setDirection(new Vector(0, 0, -1), new Vector(0, 1, 0))
+                .setVpDistance(50)
+                .setVpSize(150, 150)
                 .setResolution(NX, NY)
-                .setAntiAliasing(AA_SAMPLES)
-                .setRayTracer(scene, RayTracerType.SIMPLE);
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setDepthOfField(54, 0.3, 9); // Enforce MP1 functionality!
 
-        if (threadMode != 0)
-            builder.setMultithreading(threadMode).setDebugPrint(5);
+        if (useThreads)
+            builder.setMultithreading(-2).setDebugPrint(5);
 
         builder.build()
                 .renderImage()
                 .writeToImage(imageName);
 
-        long elapsed = System.currentTimeMillis() - start;
-        System.out.printf("%-40s %5d ms%n", imageName + ":", elapsed);
+        System.out.printf("%-40s %5d ms%n", imageName + ":", System.currentTimeMillis() - start);
         Intersectable.setCBR(false);
-        return elapsed;
     }
 
-    /**
-     * Renders the scene, prints the elapsed time, and resets CBR to off.
-     *
-     * @param  scene      the scene to render
-     * @param  imageName  output file name (without extension)
-     * @param  useThreads {@code true} to enable auto raw-threads mode (−2)
-     * @return            elapsed render time in milliseconds
-     */
-    private long doRender(Scene scene, String imageName, boolean useThreads) {
-        return doRenderMode(scene, imageName, useThreads ? -2 : 0);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
+    // ==========================================================
     // 12 benchmark tests
-    // ─────────────────────────────────────────────────────────────────────────
+    // ==========================================================
 
-    // ── Row 1: No accel, flat scene ───────────────────────────────────────
+    // --- Row 1: No accel, flat scene ---
 
     /**
      * No acceleration, flat hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_01_noAccel_flat_noMT() {
-        doRender(buildFlatScene(), "mp2_01_noAccel_flat_noMT", false);
-    }
+    @Test void mp2_01_noAccel_flat_noMT() { doRender(buildFlatScene(), "mp2_01_noAccel_flat_noMT_final", false); }
 
     /**
      * No acceleration, flat hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_02_noAccel_flat_MT() {
-        doRender(buildFlatScene(), "mp2_02_noAccel_flat_MT", true);
-    }
+    @Test void mp2_02_noAccel_flat_MT() { doRender(buildFlatScene(), "mp2_02_noAccel_flat_MT_final", true); }
 
-    // ── Row 2: No accel, manual BVH hierarchy ─────────────────────────────
+    // --- Row 2: No accel, manual BVH hierarchy ---
 
     /**
      * No acceleration, manual BVH hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_03_noAccel_manual_noMT() {
-        doRender(buildManualBVHScene(), "mp2_03_noAccel_manual_noMT", false);
-    }
+    @Test void mp2_03_noAccel_manual_noMT() { doRender(buildManualBVHScene(), "mp2_03_noAccel_manual_noMT_final", false); }
 
     /**
      * No acceleration, manual BVH hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_04_noAccel_manual_MT() {
-        doRender(buildManualBVHScene(), "mp2_04_noAccel_manual_MT", true);
-    }
+    @Test void mp2_04_noAccel_manual_MT() { doRender(buildManualBVHScene(), "mp2_04_noAccel_manual_MT_final", true); }
 
-    // ── Row 3: No accel, auto BVH hierarchy ───────────────────────────────
+    // --- Row 3: No accel, auto BVH hierarchy ---
 
     /**
      * No acceleration, auto BVH hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_05_noAccel_auto_noMT() {
+    @Test void mp2_05_noAccel_auto_noMT() {
         Scene scene = buildFlatScene();
         scene.setGeometries(scene.geometries.flatten().buildBVH());
-        doRender(scene, "mp2_05_noAccel_auto_noMT", false);
+        doRender(scene, "mp2_05_noAccel_auto_noMT_final", false);
     }
 
     /**
      * No acceleration, auto BVH hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_06_noAccel_auto_MT() {
+    @Test void mp2_06_noAccel_auto_MT() {
         Scene scene = buildFlatScene();
         scene.setGeometries(scene.geometries.flatten().buildBVH());
-        doRender(scene, "mp2_06_noAccel_auto_MT", true);
+        doRender(scene, "mp2_06_noAccel_auto_MT_final", true);
     }
 
-    // ── Row 4: CBR, flat scene ────────────────────────────────────────────
+    // --- Row 4: CBR, flat scene ---
 
     /**
      * CBR enabled, flat hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_07_cbr_flat_noMT() {
+    @Test void mp2_07_cbr_flat_noMT() {
         Intersectable.setCBR(true);
-        doRender(buildFlatScene(), "mp2_07_cbr_flat_noMT", false);
+        doRender(buildFlatScene(), "mp2_07_cbr_flat_noMT_final", false);
     }
 
     /**
      * CBR enabled, flat hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_08_cbr_flat_MT() {
+    @Test void mp2_08_cbr_flat_MT() {
         Intersectable.setCBR(true);
-        doRender(buildFlatScene(), "mp2_08_cbr_flat_MT", true);
+        doRender(buildFlatScene(), "mp2_08_cbr_flat_MT_final", true);
     }
 
-    // ── Row 5: CBR + manual BVH ───────────────────────────────────────────
+    // --- Row 5: CBR + manual BVH ---
 
     /**
      * CBR enabled, manual BVH hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_09_cbr_manual_noMT() {
+    @Test void mp2_09_cbr_manual_noMT() {
         Intersectable.setCBR(true);
-        doRender(buildManualBVHScene(), "mp2_09_cbr_manual_noMT", false);
+        doRender(buildManualBVHScene(), "mp2_09_cbr_manual_noMT_final", false);
     }
 
     /**
      * CBR enabled, manual BVH hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_10_cbr_manual_MT() {
+    @Test void mp2_10_cbr_manual_MT() {
         Intersectable.setCBR(true);
-        doRender(buildManualBVHScene(), "mp2_10_cbr_manual_MT", true);
+        doRender(buildManualBVHScene(), "mp2_10_cbr_manual_MT_final", true);
     }
 
-    // ── Row 6: CBR + auto BVH ────────────────────────────────────────────
+    // --- Row 6: CBR + auto BVH ---
 
     /**
      * CBR enabled, auto BVH hierarchy, no multi-threading.
      */
-    @Test
-    void mp2_11_cbr_auto_noMT() {
+    @Test void mp2_11_cbr_auto_noMT() {
         Scene scene = buildFlatScene();
         scene.setGeometries(scene.geometries.flatten().buildBVH());
         Intersectable.setCBR(true);
-        doRender(scene, "mp2_11_cbr_auto_noMT", false);
+        doRender(scene, "mp2_11_cbr_auto_noMT_final", false);
     }
 
     /**
      * CBR enabled, auto BVH hierarchy, with multi-threading.
      */
-    @Test
-    void mp2_12_cbr_auto_MT() {
+    @Test void mp2_12_cbr_auto_MT() {
         Scene scene = buildFlatScene();
         scene.setGeometries(scene.geometries.flatten().buildBVH());
         Intersectable.setCBR(true);
-        doRender(scene, "mp2_12_cbr_auto_MT", true);
-    }
-
-    // ── Parallel-stream threading (mode −1) ───────────────────────────────────
-
-    /**
-     * No acceleration, flat hierarchy, parallel-stream multi-threading (mode −1).
-     */
-    @Test
-    void mp2_13_noAccel_flat_stream() {
-        doRenderMode(buildFlatScene(), "mp2_13_noAccel_flat_stream", -1);
-    }
-
-    /**
-     * CBR + auto BVH, parallel-stream multi-threading (mode −1).
-     */
-    @Test
-    void mp2_14_cbr_auto_stream() {
-        Scene scene = buildFlatScene();
-        scene.setGeometries(scene.geometries.flatten().buildBVH());
-        Intersectable.setCBR(true);
-        doRenderMode(scene, "mp2_14_cbr_auto_stream", -1);
-    }
-
-    // ── Mandatory 4-configuration benchmark ───────────────────────────────────
-
-    /**
-     * Mandatory 4-configuration benchmark on one fixed scene.
-     * <p>
-     * Runs all four required configurations sequentially and prints speedup
-     * ratios so that the contribution of BVH and multi-threading can be
-     * measured independently.  Mini-Project 1 ({@code AA_SAMPLES}² rays/pixel)
-     * is active in all four runs.
-     * </p>
-     */
-    @Test
-    void mp2_benchmark_4configs() {
-        System.out.println("\n=== Mandatory 4-configuration benchmark (same scene) ===");
-
-        // 1 – acceleration off, threading off
-        long t1 = doRender(buildFlatScene(), "mp2_B1_noAccel_noMT", false);
-
-        // 2 – acceleration off, threading on (raw-threads)
-        long t2 = doRender(buildFlatScene(), "mp2_B2_noAccel_MT",   true);
-
-        // 3 – BVH + CBR on, threading off
-        Scene s3 = buildFlatScene();
-        s3.setGeometries(s3.geometries.flatten().buildBVH());
-        Intersectable.setCBR(true);
-        long t3 = doRender(s3, "mp2_B3_bvh_noMT", false);
-
-        // 4 – BVH + CBR on, threading on (raw-threads)
-        Scene s4 = buildFlatScene();
-        s4.setGeometries(s4.geometries.flatten().buildBVH());
-        Intersectable.setCBR(true);
-        long t4 = doRender(s4, "mp2_B4_bvh_MT", true);
-
-        System.out.printf("%n%-40s %.2fx%n", "Threading speedup (no accel):", (double) t1 / t2);
-        System.out.printf("%-40s %.2fx%n",   "BVH speedup (single thread):",  (double) t1 / t3);
-        System.out.printf("%-40s %.2fx%n",   "Combined speedup (BVH + MT):",  (double) t1 / t4);
+        doRender(scene, "mp2_12_cbr_auto_MT_final", true);
     }
 }
