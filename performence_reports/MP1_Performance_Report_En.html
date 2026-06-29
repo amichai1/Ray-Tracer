@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>מיני פרויקט 1 – דוח ביצועי Anti-Aliasing ו-DOF</title>
+    <title>Mini-Project 1 – Anti-Aliasing and Depth of Field Performance Report</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,7 +14,6 @@
             font-family: Arial, "Segoe UI", sans-serif;
             font-size: 12px;
             color: #222;
-            direction: rtl;
         }
 
         .page {
@@ -67,7 +66,6 @@
             border-collapse: collapse;
             margin: 8px 0 14px 0;
             font-size: 11px;
-            direction: rtl;
         }
 
         th {
@@ -84,8 +82,8 @@
             text-align: center;
         }
 
-        td.right {
-            text-align: right;
+        td.left {
+            text-align: left;
         }
 
         tr:nth-child(even) {
@@ -111,12 +109,12 @@
         .footer {
             font-size: 9px;
             color: #aaa;
-            text-align: left;
+            text-align: right;
             margin-top: 20px;
         }
 
         .obs-list {
-            margin: 6px 16px 10px 0;
+            margin: 6px 0 10px 16px;
             font-size: 11px;
             line-height: 1.7;
             list-style-type: disc;
@@ -169,111 +167,112 @@
 </head>
 <body>
 
-<!-- ═══════════════════════════════  עמוד 1  ═══════════════════════════════ -->
+<!-- ═══════════════════════════════  PAGE 1  ═══════════════════════════════ -->
 <div class="page">
 
-    <h1>מיני פרויקט 1 – מדידות ביצועי Anti-Aliasing ו-Depth of Field</h1>
-    <div class="subtitle">דוח זמני עיבוד להשפעת שיפורי איכות התמונה על זמן הרינדור</div>
-    <div class="authors">עמיחי מוקדס &nbsp;ו&nbsp; מיכאל דבאח &nbsp;·&nbsp; ISE5786 &nbsp;·&nbsp; 2025–2026</div>
+    <h1>Mini-Project 1 – Anti-Aliasing and Depth of Field Performance Measurements</h1>
+    <div class="subtitle">Render-time report for image-quality enhancement features</div>
+    <div class="authors">Amichai Mukades &amp; Michael Dabah &nbsp;·&nbsp; ISE5786 &nbsp;·&nbsp; 2025–2026</div>
 
     <p>
-        מיני פרויקט 1 יישם שני אלגוריתמי שיפור איכות תמונה:
-        <b>Anti-Aliasing (AA)</b> המבוסס על Super-Sampling רשתי – כל פיקסל מוצלב
-        על ידי רשת 3×3 של קרניים (9 קרניים לפיקסל), ו-<b>Depth of Field (DOF)</b>
-        המדמה פתחה (Aperture) ריאלית – כל קרן ראשית מוחלפת בסמפלים מרובים דרך
-        פתחה מעגלית, וממוצעם יוצר אפקט פוקוס.
+        Mini-Project 1 implemented two image-quality enhancement algorithms:
+        <b>Anti-Aliasing (AA)</b> via grid-based Super-Sampling — each pixel is sampled
+        with a 3×3 grid of rays (9 rays per pixel) whose colours are averaged — and
+        <b>Depth of Field (DOF)</b> via aperture simulation — each primary ray is replaced
+        by multiple samples through a circular aperture, creating a realistic focus effect.
+        Both features were measured on the MP1Tests scene.
     </p>
 
-    <h2>MP1Tests – השפעת AA ו-DOF בנפרד</h2>
+    <h2>MP1Tests – individual impact of AA and DOF</h2>
     <p class="note">
-        כל Feature נמדד מול Baseline מתאים (ללא אותה Feature).
-        עומס = זמן עם Feature ÷ זמן Baseline.
+        Each feature is measured against its own baseline (feature off).
+        Overhead = time with feature ÷ baseline time.
     </p>
 
     <table>
         <thead>
         <tr>
-            <th class="right" style="text-align:right">בדיקה</th>
-            <th>Feature פעיל</th>
-            <th>זמן (שנ')</th>
-            <th>עומס יחסי ל-Baseline</th>
+            <th class="left" style="text-align:left">Test</th>
+            <th>Active feature</th>
+            <th>Time (s)</th>
+            <th>Overhead vs baseline</th>
         </tr>
         </thead>
         <tbody>
         <tr>
-            <td class="right">AA off (Baseline)</td>
-            <td>ללא שיפורים</td>
+            <td class="left">AA off (baseline)</td>
+            <td>None</td>
             <td>4.197</td>
-            <td>1.00x</td>
+            <td>1.00×</td>
         </tr>
         <tr class="slow">
-            <td class="right">AA on</td>
-            <td>Anti-Aliasing 3×3 (9 קרניים/פיקסל)</td>
+            <td class="left">AA on</td>
+            <td>Anti-Aliasing 3×3 (9 rays/pixel)</td>
             <td>286.642</td>
-            <td>68.3x איטי יותר</td>
+            <td>68.3× slower</td>
         </tr>
         <tr>
-            <td class="right">DOF off (Baseline)</td>
-            <td>ללא שיפורים</td>
+            <td class="left">DOF off (baseline)</td>
+            <td>None</td>
             <td>4.723</td>
-            <td>1.00x</td>
+            <td>1.00×</td>
         </tr>
         <tr class="slow">
-            <td class="right">DOF on</td>
-            <td>Depth of Field (Aperture simulation)</td>
+            <td class="left">DOF on</td>
+            <td>Depth of Field (aperture simulation)</td>
             <td>315.583</td>
-            <td>66.8x איטי יותר</td>
+            <td>66.8× slower</td>
         </tr>
         </tbody>
     </table>
 
     <div class="img-row">
         <div class="img-cell">
-            <img src="images/aa_off.png" alt="AA off"/>
-            <div class="cap">AA off – ללא Anti-Aliasing</div>
+            <img src="../images/aa_off.png" alt="AA off"/>
+            <div class="cap">AA off – no Anti-Aliasing</div>
         </div>
         <div class="img-cell">
-            <img src="images/aa_on.png" alt="AA on"/>
-            <div class="cap">AA on – Super-Sampling 3×3</div>
+            <img src="../images/aa_on.png" alt="AA on"/>
+            <div class="cap">AA on – 3×3 Super-Sampling</div>
         </div>
         <div class="img-cell">
-            <img src="images/dof_off.png" alt="DOF off"/>
-            <div class="cap">DOF off – ללא Depth of Field</div>
+            <img src="../images/dof_off.png" alt="DOF off"/>
+            <div class="cap">DOF off – no Depth of Field</div>
         </div>
         <div class="img-cell">
-            <img src="images/dof_on.png" alt="DOF on"/>
-            <div class="cap">DOF on – Aperture simulation</div>
+            <img src="../images/dof_on.png" alt="DOF on"/>
+            <div class="cap">DOF on – aperture simulation</div>
         </div>
     </div>
 
-    <div class="footer">עמוד 1</div>
+    <div class="footer">Page 1</div>
 </div>
 
 
-<!-- ═══════════════════════════════  עמוד 2  ═══════════════════════════════ -->
+<!-- ═══════════════════════════════  PAGE 2  ═══════════════════════════════ -->
 <div class="page">
 
-    <h2>תובנות מרכזיות</h2>
+    <h2>Key observations</h2>
     <ul class="obs-list">
         <li>
-            <b>עומס AA גבוה בהרבה מ-9×:</b>
-            כל אחת מ-9 קרניי ה-Super-Sampling מייצרת קרניים משניות לצל, השתקפות
-            ושקיפות. הצטברות הקרניים הישירות והמשניות מניבה עומס של כ-68× על פני
-            Baseline חד-קרני, הרבה מעבר לגורם הכפל הנומינלי של 9.
+            <b>AA overhead far exceeds the nominal 9× ray count.</b>
+            Each of the 9 super-sampling rays spawns secondary rays for shadows,
+            reflections, and transparency. The cumulative primary and secondary ray count
+            produces an overhead of ~68×, well above the naive 9× expectation.
         </li>
         <li>
-            <b>DOF מביא לעומס דומה ל-AA (כ-67×).</b>
-            כל פיקסל מוצלב מול סמפלים מרובים על הפתחה, כאשר כל קרן כזו מייצרת שוב
-            קרניים משניות – תהליך הדומה מבחינת עלות ל-Super-Sampling.
+            <b>DOF carries a similar overhead to AA (~67×).</b>
+            Each pixel is sampled at multiple aperture points, and each such ray again
+            spawns secondary rays. The cost structure mirrors super-sampling exactly.
         </li>
     </ul>
 
     <p style="margin-top: 16px; font-size: 11px;">
-        <b>סיכום:</b> שתי ה-Features של MP1 (AA ו-DOF) מוסיפות עומס כבד (~67–68×),
-        שמקורו בריבוי קרניים ראשיות ומשניות לכל פיקסל.
+        <b>Summary:</b> Both MP1 features (AA and DOF) impose heavy overhead (~67–68×),
+        driven by the multiplication of primary and secondary rays per pixel.
     </p>
 
-    <div class="footer">עמוד 2</div>
+    <div class="footer">Page 2</div>
 </div>
 
 </body>
