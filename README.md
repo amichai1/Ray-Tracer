@@ -115,7 +115,7 @@ Camera.getBuilder()
         .enableBVH()                 // build the acceleration tree
         .build()
         .renderImage()
-        .writeToImage("sphere");   // -> images/two_spheres.png
+        .writeToImage("sphere");   // -> images/spheres.png
 ```
 
 ## Project Structure
